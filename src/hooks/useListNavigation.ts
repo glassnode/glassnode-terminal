@@ -18,6 +18,10 @@ export interface ListNavigation {
   moveUp: () => void;
   /** Move selection down by 1 */
   moveDown: () => void;
+  /** Move selection up by one page */
+  pageUp: () => void;
+  /** Move selection down by one page */
+  pageDown: () => void;
   /** Jump to first item */
   goToStart: () => void;
   /** Jump to last item */
@@ -38,14 +42,17 @@ export function useListNavigation({ itemCount, viewportSize, isSelectable }: Lis
   const [scrollOffset, setScrollOffset] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Clamp selectedIndex when itemCount shrinks
+  // Clamp selectedIndex when itemCount changes, snapping to a selectable item
   useEffect(() => {
     if (itemCount === 0) {
       setSelectedIndex(0);
       setScrollOffset(0);
     } else if (selectedIndex >= itemCount) {
-      setSelectedIndex(itemCount - 1);
+      const target = isSelectable ? findSelectable(itemCount - 1, -1) : itemCount - 1;
+      setSelectedIndex(target);
       setScrollOffset((prev) => Math.min(prev, Math.max(0, itemCount - viewportSize)));
+    } else if (isSelectable && !isSelectable(selectedIndex)) {
+      setSelectedIndex(findSelectable(selectedIndex, 1));
     }
   }, [itemCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,6 +105,22 @@ export function useListNavigation({ itemCount, viewportSize, isSelectable }: Lis
     clampAndScroll(target);
   }, [clampAndScroll, selectedIndex, isSelectable, findSelectable]);
 
+  const pageUp = useCallback(() => {
+    let target = selectedIndex - viewportSize;
+    if (isSelectable) {
+      target = findSelectable(Math.max(0, target), -1);
+    }
+    clampAndScroll(target);
+  }, [clampAndScroll, selectedIndex, viewportSize, isSelectable, findSelectable]);
+
+  const pageDown = useCallback(() => {
+    let target = selectedIndex + viewportSize;
+    if (isSelectable) {
+      target = findSelectable(Math.min(itemCount - 1, target), 1);
+    }
+    clampAndScroll(target);
+  }, [clampAndScroll, selectedIndex, viewportSize, itemCount, isSelectable, findSelectable]);
+
   const goToStart = useCallback(() => {
     clampAndScroll(isSelectable ? findSelectable(0, 1) : 0);
   }, [clampAndScroll, isSelectable, findSelectable]);
@@ -123,6 +146,8 @@ export function useListNavigation({ itemCount, viewportSize, isSelectable }: Lis
     searchQuery,
     moveUp,
     moveDown,
+    pageUp,
+    pageDown,
     goToStart,
     goToEnd,
     setSearchQuery,

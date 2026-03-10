@@ -14,12 +14,14 @@ export function StatusBar({ browseMode }: StatusBarProps): React.ReactElement {
       <Text dimColor>[{modeLabel}]</Text>
       <Text><Text color="yellow">←→</Text>:pane</Text>
       <Text><Text color="yellow">↑↓</Text>:navigate</Text>
+      <Text><Text color="yellow">PgUp/Dn</Text>:page</Text>
       <Text><Text color="yellow">Enter</Text>:select</Text>
       <Text><Text color="yellow">/</Text>:search</Text>
       <Text><Text color="yellow">m</Text>:mode</Text>
       <Text><Text color="yellow">i</Text>:interval</Text>
       <Text><Text color="yellow">s</Text>:since</Text>
       <Text><Text color="yellow">c</Text>:currency</Text>
+      <Text><Text color="yellow">v</Text>:table/chart</Text>
       <Text><Text color="yellow">q</Text>:quit</Text>
     </Box>
   );

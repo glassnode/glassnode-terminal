@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
+import { InkUPlot } from 'ink-uplot';
 import type { DataPoint, MetricParams } from '../lib/types.js';
 import { formatDate, formatValue, padRight } from '../lib/format.js';
 import { ParamBar } from './ParamBar.js';
 import { Spinner } from './Spinner.js';
+
+export type DataViewMode = 'table' | 'chart';
 
 interface DataViewProps {
   data: DataPoint[];
@@ -15,6 +18,9 @@ interface DataViewProps {
   isFocused: boolean;
   visibleRange: [number, number];
   selectedIndex: number;
+  viewMode: DataViewMode;
+  chartWidth: number;
+  chartHeight: number;
 }
 
 export function DataView({
@@ -27,9 +33,41 @@ export function DataView({
   isFocused,
   visibleRange,
   selectedIndex,
+  viewMode,
+  chartWidth,
+  chartHeight,
 }: DataViewProps): React.ReactElement {
   const [start, end] = visibleRange;
   const visible = data.slice(start, end);
+
+  // Prepare chart data: [timestamps[], values[]]
+  const chartData = useMemo(() => {
+    if (data.length === 0) return null;
+    const timestamps: number[] = [];
+    const values: number[] = [];
+    for (const point of data) {
+      timestamps.push(point.t);
+      if (typeof point.v === 'number') {
+        values.push(point.v);
+      } else {
+        values.push(0);
+      }
+    }
+    return [timestamps, values] as [number[], number[]];
+  }, [data]);
+
+  const chartOpts = useMemo(() => ({
+    width: 800,
+    height: 400,
+    series: [
+      {},
+      { stroke: 'cyan', label: 'Value', width: 1 },
+    ],
+    axes: [
+      { show: false },
+      { show: false },
+    ],
+  }), []);
 
   return (
     <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'}>
@@ -41,6 +79,9 @@ export function DataView({
             : 'Select a metric and asset'}
         </Text>
         {loading && <Spinner label="" />}
+        {data.length > 0 && (
+          <Text dimColor> [{viewMode === 'table' ? 'Table' : 'Chart'}]</Text>
+        )}
       </Box>
 
       {error && (
@@ -49,7 +90,7 @@ export function DataView({
         </Box>
       )}
 
-      {!loading && !error && data.length > 0 && (
+      {!loading && !error && data.length > 0 && viewMode === 'table' && (
         <Box flexDirection="column">
           <Box paddingX={1} gap={2}>
             <Text bold>{padRight('Date', 16)}</Text>
@@ -77,6 +118,16 @@ export function DataView({
             );
           })}
         </Box>
+      )}
+
+      {!loading && !error && data.length > 0 && viewMode === 'chart' && chartData && (
+        <InkUPlot
+          opts={chartOpts}
+          data={chartData}
+          width={Math.max(20, chartWidth)}
+          height={Math.max(5, chartHeight)}
+          threshold={30}
+        />
       )}
 
       {!loading && !error && data.length === 0 && selectedMetric && selectedAsset && (

@@ -5,7 +5,7 @@ import { useMetricData } from './hooks/useMetricData.js';
 import { useListNavigation } from './hooks/useListNavigation.js';
 import { AssetList } from './components/AssetList.js';
 import { MetricList } from './components/MetricList.js';
-import { DataView } from './components/DataView.js';
+import { DataView, type DataViewMode } from './components/DataView.js';
 import { StatusBar } from './components/StatusBar.js';
 import { SearchOverlay } from './components/SearchOverlay.js';
 import { Spinner } from './components/Spinner.js';
@@ -29,10 +29,14 @@ function cycleNext<T>(arr: readonly T[], current: T): T {
 export function App(): React.ReactElement {
   const { stdout } = useStdout();
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
+  const [termWidth, setTermWidth] = useState(stdout?.columns ?? 80);
 
   useEffect(() => {
     if (!stdout) return;
-    const onResize = () => setTermHeight(stdout.rows);
+    const onResize = () => {
+      setTermHeight(stdout.rows);
+      setTermWidth(stdout.columns);
+    };
     stdout.on('resize', onResize);
     return () => { stdout.off('resize', onResize); };
   }, [stdout]);
@@ -69,6 +73,7 @@ export function App(): React.ReactElement {
   const [selectedMetricPath, setSelectedMetricPath] = useState<string | null>(null);
   const [params, setParams] = useState<MetricParams>(DEFAULT_PARAMS);
   const [searchMode, setSearchMode] = useState(false);
+  const [dataViewMode, setDataViewMode] = useState<DataViewMode>('chart');
   const [leftSearchQuery, setLeftSearchQuery] = useState('');
   const [middleSearchQuery, setMiddleSearchQuery] = useState('');
   const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
@@ -262,6 +267,41 @@ export function App(): React.ReactElement {
     : activePane === Pane.Middle ? middleNav
     : null;
 
+  // Valid intervals and currencies for the selected metric (fall back to full lists)
+  const validIntervals = useMemo(() => {
+    if (!selectedMetricPath) return INTERVALS as unknown as readonly string[];
+    const metricIntervals = metadataMap[selectedMetricPath]?.parameters?.['i'];
+    if (!metricIntervals?.length) return INTERVALS as unknown as readonly string[];
+    // Preserve the canonical order from INTERVALS
+    const set = new Set(metricIntervals);
+    const ordered = (INTERVALS as unknown as string[]).filter((i) => set.has(i));
+    return ordered.length > 0 ? ordered : INTERVALS as unknown as readonly string[];
+  }, [selectedMetricPath, metadataMap]);
+
+  const validCurrencies = useMemo(() => {
+    if (!selectedMetricPath) return CURRENCIES as unknown as readonly string[];
+    const metricCurrencies = metadataMap[selectedMetricPath]?.parameters?.['c'];
+    if (!metricCurrencies?.length) return CURRENCIES as unknown as readonly string[];
+    const set = new Set(metricCurrencies);
+    const ordered = (CURRENCIES as unknown as string[]).filter((c) => set.has(c));
+    return ordered.length > 0 ? ordered : CURRENCIES as unknown as readonly string[];
+  }, [selectedMetricPath, metadataMap]);
+
+  // Snap params to valid values when the selected metric changes
+  useEffect(() => {
+    if (!selectedMetricPath) return;
+    setParams((p) => {
+      const newParams = { ...p };
+      if (!validIntervals.includes(newParams.interval)) {
+        newParams.interval = validIntervals[0] ?? '24h';
+      }
+      if (!validCurrencies.includes(newParams.currency)) {
+        newParams.currency = validCurrencies[0] ?? 'usd';
+      }
+      return newParams;
+    });
+  }, [selectedMetricPath, validIntervals, validCurrencies]);
+
   // Metric data (only fetched when both metric and asset are selected via Enter)
   const { data, loading: dataLoading, error: dataError } = useMetricData(
     selectedMetricPath,
@@ -350,13 +390,33 @@ export function App(): React.ReactElement {
     if (key.return) { handleSelect(); return; }
 
     if (key.upArrow) {
-      if (activePane === Pane.Data) dataNavReal.moveUp();
-      else activeNav?.moveUp();
+      if (key.shift) {
+        if (activePane === Pane.Data) dataNavReal.pageUp();
+        else activeNav?.pageUp();
+      } else {
+        if (activePane === Pane.Data) dataNavReal.moveUp();
+        else activeNav?.moveUp();
+      }
       return;
     }
     if (key.downArrow) {
-      if (activePane === Pane.Data) dataNavReal.moveDown();
-      else activeNav?.moveDown();
+      if (key.shift) {
+        if (activePane === Pane.Data) dataNavReal.pageDown();
+        else activeNav?.pageDown();
+      } else {
+        if (activePane === Pane.Data) dataNavReal.moveDown();
+        else activeNav?.moveDown();
+      }
+      return;
+    }
+    if (key.pageUp) {
+      if (activePane === Pane.Data) dataNavReal.pageUp();
+      else activeNav?.pageUp();
+      return;
+    }
+    if (key.pageDown) {
+      if (activePane === Pane.Data) dataNavReal.pageDown();
+      else activeNav?.pageDown();
       return;
     }
     if (key.leftArrow) { prevPane(); return; }
@@ -382,9 +442,10 @@ export function App(): React.ReactElement {
       return;
     }
 
-    if (input === 'i') { setParams((p) => ({ ...p, interval: cycleNext(INTERVALS, p.interval) })); return; }
+    if (input === 'i') { setParams((p) => ({ ...p, interval: cycleNext(validIntervals, p.interval) })); return; }
     if (input === 's') { setParams((p) => ({ ...p, since: cycleNext(SINCE_OPTIONS, p.since) })); return; }
-    if (input === 'c') { setParams((p) => ({ ...p, currency: cycleNext(CURRENCIES, p.currency) })); return; }
+    if (input === 'c') { setParams((p) => ({ ...p, currency: cycleNext(validCurrencies, p.currency) })); return; }
+    if (input === 'v') { setDataViewMode((m) => (m === 'table' ? 'chart' : 'table')); return; }
   });
 
   const handleSearchSubmit = useCallback(() => { setSearchMode(false); }, []);
@@ -469,6 +530,9 @@ export function App(): React.ReactElement {
           isFocused={activePane === Pane.Data}
           visibleRange={dataNavReal.visibleRange}
           selectedIndex={dataNavReal.selectedIndex}
+          viewMode={dataViewMode}
+          chartWidth={Math.max(20, termWidth - 35 - 70 - 6)}
+          chartHeight={viewportSize}
         />
       </Box>
 
