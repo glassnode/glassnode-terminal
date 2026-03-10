@@ -69,7 +69,10 @@ export function App(): React.ReactElement {
   const [selectedMetricPath, setSelectedMetricPath] = useState<string | null>(null);
   const [params, setParams] = useState<MetricParams>(DEFAULT_PARAMS);
   const [searchMode, setSearchMode] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [leftSearchQuery, setLeftSearchQuery] = useState('');
+  const [middleSearchQuery, setMiddleSearchQuery] = useState('');
+  const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
+  const setActiveSearchQuery = activePane === Pane.Left ? setLeftSearchQuery : setMiddleSearchQuery;
 
   // Build reverse index: asset symbol (uppercase) → set of metric paths that support it
   const metricsByAsset = useMemo(() => {
@@ -101,20 +104,44 @@ export function App(): React.ReactElement {
     [allMetrics, metadataMap],
   );
 
-  const isMetricSelectable = useCallback(
-    (index: number) => allMetricItems[index]?.type === 'metric',
-    [allMetricItems],
-  );
-
-  // Navigation hooks — declared before filtering so we can use selectedIndex for highlighting
-  const assetNav = useListNavigation({ itemCount: allAssets.length, viewportSize });
-  const metricNav = useListNavigation({ itemCount: allMetricItems.length, viewportSize, isSelectable: isMetricSelectable });
-
   const leftIsAssets = browseMode === 'asset-first';
 
+  // Search-filtered versions of the full lists (for the left pane)
+  const displayedAssets = useMemo(() => {
+    if (!leftSearchQuery || !leftIsAssets) return allAssets;
+    const q = leftSearchQuery.toLowerCase();
+    return allAssets.filter((a) => a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q));
+  }, [allAssets, leftSearchQuery, leftIsAssets]);
+
+  const displayedMetricItems = useMemo(() => {
+    if (!leftSearchQuery || leftIsAssets) return allMetricItems;
+    const q = leftSearchQuery.toLowerCase();
+    const result: MetricListItem[] = [];
+    let pendingTagHeader: MetricListItem | null = null;
+    let pendingGroupHeader: MetricListItem | null = null;
+    for (const item of allMetricItems) {
+      if (item.type === 'tag-header') { pendingTagHeader = item; pendingGroupHeader = null; continue; }
+      if (item.type === 'group-header') { pendingGroupHeader = item; continue; }
+      if (!item.path.toLowerCase().includes(q) && !item.displayName.toLowerCase().includes(q)) continue;
+      if (pendingTagHeader) { result.push(pendingTagHeader); pendingTagHeader = null; }
+      if (pendingGroupHeader) { result.push(pendingGroupHeader); pendingGroupHeader = null; }
+      result.push(item);
+    }
+    return result;
+  }, [allMetricItems, leftSearchQuery, leftIsAssets]);
+
+  const isMetricSelectable = useCallback(
+    (index: number) => displayedMetricItems[index]?.type === 'metric',
+    [displayedMetricItems],
+  );
+
+  // Navigation hooks — use displayed (search-filtered) lists
+  const assetNav = useListNavigation({ itemCount: displayedAssets.length, viewportSize });
+  const metricNav = useListNavigation({ itemCount: displayedMetricItems.length, viewportSize, isSelectable: isMetricSelectable });
+
   // The currently highlighted (cursor) item in each list
-  const highlightedAssetSymbol = allAssets[assetNav.selectedIndex]?.symbol?.toUpperCase() ?? null;
-  const highlightedMetricItem = allMetricItems[metricNav.selectedIndex];
+  const highlightedAssetSymbol = displayedAssets[assetNav.selectedIndex]?.symbol?.toUpperCase() ?? null;
+  const highlightedMetricItem = displayedMetricItems[metricNav.selectedIndex];
   const highlightedMetricPath = highlightedMetricItem?.type === 'metric' ? highlightedMetricItem.path : null;
 
   // Filter metric items based on highlighted asset (asset-first mode) and search
@@ -128,13 +155,10 @@ export function App(): React.ReactElement {
       if (supported) pathFilter = supported;
     }
 
-    // Search filter
-    const isMetricSearchPane =
-      (activePane === Pane.Left && browseMode === 'metric-first') ||
-      (activePane === Pane.Middle && browseMode === 'asset-first');
+    // Search filter (middle pane only — left pane handled by displayedMetricItems)
     let searchFilter: ((item: MetricListItem) => boolean) | null = null;
-    if (searchMode && isMetricSearchPane && searchQuery) {
-      const q = searchQuery.toLowerCase();
+    if (middleSearchQuery && browseMode === 'asset-first') {
+      const q = middleSearchQuery.toLowerCase();
       searchFilter = (item) =>
         item.type !== 'metric' ||
         item.path.toLowerCase().includes(q) ||
@@ -173,7 +197,7 @@ export function App(): React.ReactElement {
     }
 
     return result;
-  }, [allMetricItems, browseMode, highlightedAssetSymbol, metricsByAsset, searchMode, searchQuery, activePane]);
+  }, [allMetricItems, browseMode, highlightedAssetSymbol, metricsByAsset, middleSearchQuery]);
 
   const filteredAssets = useMemo(() => {
     let list = allAssets;
@@ -186,16 +210,13 @@ export function App(): React.ReactElement {
       }
     }
 
-    // Search filter
-    const isAssetSearchPane =
-      (activePane === Pane.Left && browseMode === 'asset-first') ||
-      (activePane === Pane.Middle && browseMode === 'metric-first');
-    if (searchMode && isAssetSearchPane && searchQuery) {
-      const q = searchQuery.toLowerCase();
+    // Search filter (middle pane only — left pane handled by displayedAssets)
+    if (middleSearchQuery && browseMode === 'metric-first') {
+      const q = middleSearchQuery.toLowerCase();
       list = list.filter((a) => a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q));
     }
     return list;
-  }, [allAssets, browseMode, highlightedMetricPath, assetsByMetric, searchMode, searchQuery, activePane]);
+  }, [allAssets, browseMode, highlightedMetricPath, assetsByMetric, middleSearchQuery]);
 
   // Update nav item counts when filtered lists change
   const filteredAssetNav = useListNavigation({ itemCount: filteredAssets.length, viewportSize });
@@ -270,7 +291,7 @@ export function App(): React.ReactElement {
   const handleSelect = useCallback(() => {
     if (activePane === Pane.Left) {
       if (leftIsAssets) {
-        const asset = allAssets[assetNav.selectedIndex];
+        const asset = displayedAssets[assetNav.selectedIndex];
         if (asset) {
           setSelectedAssetId(asset.symbol);
           // Clear metric if not supported by new asset
@@ -282,7 +303,7 @@ export function App(): React.ReactElement {
           }
         }
       } else {
-        const item = allMetricItems[metricNav.selectedIndex];
+        const item = displayedMetricItems[metricNav.selectedIndex];
         if (item?.type === 'metric') {
           setSelectedMetricPath(item.path);
           // Clear asset if not supported by new metric
@@ -343,7 +364,7 @@ export function App(): React.ReactElement {
 
     if (input === '/' && activePane !== Pane.Data) {
       setSearchMode(true);
-      setSearchQuery('');
+      setActiveSearchQuery('');
       return;
     }
 
@@ -351,6 +372,8 @@ export function App(): React.ReactElement {
       setBrowseMode((m) => (m === 'asset-first' ? 'metric-first' : 'asset-first'));
       setSelectedAssetId(null);
       setSelectedMetricPath(null);
+      setLeftSearchQuery('');
+      setMiddleSearchQuery('');
       assetNav.resetSelection();
       metricNav.resetSelection();
       filteredAssetNav.resetSelection();
@@ -365,7 +388,7 @@ export function App(): React.ReactElement {
   });
 
   const handleSearchSubmit = useCallback(() => { setSearchMode(false); }, []);
-  const handleSearchCancel = useCallback(() => { setSearchMode(false); setSearchQuery(''); }, []);
+  const handleSearchCancel = useCallback(() => { setSearchMode(false); setActiveSearchQuery(''); }, [setActiveSearchQuery]);
 
   // Loading screen
   if (startupLoading) {
@@ -396,19 +419,21 @@ export function App(): React.ReactElement {
         {/* Left pane — full list, cursor drives filtering of middle pane */}
         {leftIsAssets ? (
           <AssetList
-            assets={allAssets}
+            assets={displayedAssets}
             selectedIndex={assetNav.selectedIndex}
             visibleRange={assetNav.visibleRange}
             isFocused={activePane === Pane.Left}
             title="Assets"
+            searchQuery={leftSearchQuery}
           />
         ) : (
           <MetricList
-            items={allMetricItems}
+            items={displayedMetricItems}
             selectedIndex={metricNav.selectedIndex}
             visibleRange={metricNav.visibleRange}
             isFocused={activePane === Pane.Left}
             title="Metrics"
+            searchQuery={leftSearchQuery}
           />
         )}
 
@@ -420,6 +445,7 @@ export function App(): React.ReactElement {
             visibleRange={filteredMetricNav.visibleRange}
             isFocused={activePane === Pane.Middle}
             title={middleTitle}
+            searchQuery={middleSearchQuery}
           />
         ) : (
           <AssetList
@@ -428,6 +454,7 @@ export function App(): React.ReactElement {
             visibleRange={filteredAssetNav.visibleRange}
             isFocused={activePane === Pane.Middle}
             title={middleTitle}
+            searchQuery={middleSearchQuery}
           />
         )}
 
@@ -447,10 +474,12 @@ export function App(): React.ReactElement {
 
       {searchMode ? (
         <SearchOverlay
-          query={searchQuery}
-          onChange={setSearchQuery}
+          query={activeSearchQuery}
+          onChange={setActiveSearchQuery}
           onSubmit={handleSearchSubmit}
           onCancel={handleSearchCancel}
+          onMoveUp={() => activeNav?.moveUp()}
+          onMoveDown={() => activeNav?.moveDown()}
         />
       ) : (
         <StatusBar browseMode={browseMode} />

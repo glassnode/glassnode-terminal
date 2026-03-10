@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 
 export interface ListNavigationOptions {
   /** Total number of items in the list */
@@ -37,6 +37,17 @@ export function useListNavigation({ itemCount, viewportSize, isSelectable }: Lis
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Clamp selectedIndex when itemCount shrinks
+  useEffect(() => {
+    if (itemCount === 0) {
+      setSelectedIndex(0);
+      setScrollOffset(0);
+    } else if (selectedIndex >= itemCount) {
+      setSelectedIndex(itemCount - 1);
+      setScrollOffset((prev) => Math.min(prev, Math.max(0, itemCount - viewportSize)));
+    }
+  }, [itemCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const findSelectable = useCallback(
     (from: number, direction: 1 | -1): number => {
