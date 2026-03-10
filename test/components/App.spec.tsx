@@ -133,6 +133,10 @@ jest.unstable_mockModule('../../src/lib/api-client.js', () => ({
   }),
 }));
 
+jest.unstable_mockModule('ink-uplot', () => ({
+  InkUPlot: () => null,
+}));
+
 // Helper: wait for async renders to settle
 function wait(ms = 50): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
