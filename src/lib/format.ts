@@ -1,9 +1,20 @@
 /**
- * Format a unix timestamp (seconds) as YYYY-MM-DD
+ * Format a unix timestamp (seconds) with resolution based on interval.
+ * 10m → "2026-02-08 15:10", 1h → "2026-02-08 04", 24h/1d → "2026-02-08",
+ * 1w → "2026-02-08", 1month → "2026-02", 1y → "2026"
  */
-export function formatDate(unix: number): string {
+export function formatDate(unix: number, interval = '24h'): string {
   const d = new Date(unix * 1000);
-  return d.toISOString().slice(0, 10);
+  const iso = d.toISOString();
+  const date = iso.slice(0, 10);
+  const hh = iso.slice(11, 13);
+  const mm = iso.slice(14, 16);
+
+  if (interval === '1y') return date.slice(0, 4);
+  if (interval === '1month') return date.slice(0, 7);
+  if (interval === '1w' || interval === '24h' || interval === '1d') return date;
+  if (interval === '1h') return `${date} ${hh}`;
+  return `${date} ${hh}:${mm}`;
 }
 
 /**

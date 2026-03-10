@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { MetricListItem } from '../lib/types.js';
+import { HighlightedText } from './HighlightedText.js';
 
 interface MetricListProps {
   items: MetricListItem[];
@@ -9,9 +10,10 @@ interface MetricListProps {
   isFocused: boolean;
   title: string;
   maxWidth?: number;
+  searchQuery?: string;
 }
 
-export function MetricList({ items, selectedIndex, visibleRange, isFocused, title, maxWidth = 70 }: MetricListProps): React.ReactElement {
+export function MetricList({ items, selectedIndex, visibleRange, isFocused, title, maxWidth = 70, searchQuery = '' }: MetricListProps): React.ReactElement {
   const [start, end] = visibleRange;
   const visible = items.slice(start, end);
 
@@ -40,15 +42,16 @@ export function MetricList({ items, selectedIndex, visibleRange, isFocused, titl
         }
 
         const isSelected = globalIndex === selectedIndex;
+        const bg = isSelected ? (isFocused ? 'cyan' : 'gray') : undefined;
+        const fg = isSelected ? 'black' : undefined;
         return (
           <Box key={`m-${globalIndex}-${item.path}`} paddingX={1} paddingLeft={3}>
-            <Text
-              wrap="truncate-end"
-              color={isSelected ? 'black' : undefined}
-              backgroundColor={isSelected ? (isFocused ? 'cyan' : 'gray') : undefined}
-            >
-              {item.displayName}
-            </Text>
+            <HighlightedText
+              text={item.displayName}
+              highlight={searchQuery}
+              color={fg}
+              backgroundColor={bg}
+            />
           </Box>
         );
       })}

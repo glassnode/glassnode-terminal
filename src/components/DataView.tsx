@@ -52,7 +52,7 @@ export function DataView({
       {!loading && !error && data.length > 0 && (
         <Box flexDirection="column">
           <Box paddingX={1} gap={2}>
-            <Text bold>{padRight('Date', 12)}</Text>
+            <Text bold>{padRight('Date', 16)}</Text>
             <Text bold>Value</Text>
           </Box>
           {visible.map((point, i) => {
@@ -65,7 +65,7 @@ export function DataView({
                   color={isSelected ? 'black' : undefined}
                   backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
                 >
-                  {padRight(formatDate(point.t), 12)}
+                  {padRight(formatDate(point.t, params.interval), 16)}
                 </Text>
                 <Text
                   color={isSelected ? 'black' : undefined}
