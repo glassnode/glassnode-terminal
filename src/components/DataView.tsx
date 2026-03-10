@@ -34,19 +34,14 @@ export function DataView({
   return (
     <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'}>
       <ParamBar params={params} />
-      <Box paddingX={1}>
+      <Box paddingX={1} gap={1}>
         <Text dimColor>
           {selectedMetric && selectedAsset
             ? `${selectedMetric} (${selectedAsset})`
             : 'Select a metric and asset'}
         </Text>
+        {loading && <Spinner label="" />}
       </Box>
-
-      {loading && (
-        <Box paddingX={1}>
-          <Spinner label="Loading data..." />
-        </Box>
-      )}
 
       {error && (
         <Box paddingX={1}>

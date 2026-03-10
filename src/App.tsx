@@ -339,7 +339,7 @@ export function App(): React.ReactElement {
       return;
     }
     if (key.leftArrow) { prevPane(); return; }
-    if (key.rightArrow) { nextPane(); return; }
+    if (key.rightArrow) { handleSelect(); return; }
 
     if (input === '/' && activePane !== Pane.Data) {
       setSearchMode(true);
