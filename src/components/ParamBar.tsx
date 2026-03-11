@@ -1,12 +1,15 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { MetricParams } from '../lib/types.js';
+import type { DataViewMode } from './DataView.js';
 
 interface ParamBarProps {
   params: MetricParams;
+  viewMode: DataViewMode;
+  showPrice: boolean;
 }
 
-export function ParamBar({ params }: ParamBarProps): React.ReactElement {
+export function ParamBar({ params, viewMode, showPrice }: ParamBarProps): React.ReactElement {
   return (
     <Box gap={1} paddingX={1}>
       <Text>
@@ -20,6 +23,14 @@ export function ParamBar({ params }: ParamBarProps): React.ReactElement {
       <Text>
         <Text color="yellow">[c]</Text>
         <Text>{params.currency}</Text>
+      </Text>
+      <Text>
+        <Text color="yellow">[v]</Text>
+        <Text>{viewMode === 'table' ? 'table' : 'chart'}</Text>
+      </Text>
+      <Text>
+        <Text color="yellow">[p]</Text>
+        <Text>{showPrice ? 'price' : 'off'}</Text>
       </Text>
     </Box>
   );

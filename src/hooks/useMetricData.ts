@@ -5,6 +5,7 @@ import type { DataPoint, MetricParams } from '../lib/types.js';
 
 interface UseMetricDataResult {
   data: DataPoint[];
+  priceData: DataPoint[];
   loading: boolean;
   error: string | null;
 }
@@ -13,8 +14,10 @@ export function useMetricData(
   metricPath: string | null,
   asset: string | null,
   params: MetricParams,
+  showPrice?: boolean,
 ): UseMetricDataResult {
   const [data, setData] = useState<DataPoint[]>([]);
+  const [priceData, setPriceData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(0);
@@ -22,6 +25,7 @@ export function useMetricData(
   useEffect(() => {
     if (!metricPath || !asset) {
       setData([]);
+      setPriceData([]);
       return;
     }
 
@@ -37,11 +41,18 @@ export function useMetricData(
     };
 
     const client = createClient();
-    client
-      .callMetric<DataPoint[]>(metricPath, queryParams)
-      .then((result) => {
+    const metricPromise = client.callMetric<DataPoint[]>(metricPath, queryParams);
+
+    const fetchPrice = showPrice && metricPath !== '/market/price_usd_close';
+    const pricePromise = fetchPrice
+      ? client.callMetric<DataPoint[]>('/market/price_usd_close', queryParams)
+      : Promise.resolve([]);
+
+    Promise.all([metricPromise, pricePromise])
+      .then(([metricResult, priceResult]) => {
         if (abortRef.current !== requestId) return;
-        setData(Array.isArray(result) ? result : []);
+        setData(Array.isArray(metricResult) ? metricResult : []);
+        setPriceData(Array.isArray(priceResult) ? priceResult : []);
         setLoading(false);
       })
       .catch((err: Error) => {
@@ -49,7 +60,7 @@ export function useMetricData(
         setError(err.message);
         setLoading(false);
       });
-  }, [metricPath, asset, params.interval, params.since, params.currency]);
+  }, [metricPath, asset, params.interval, params.since, params.currency, showPrice]);
 
-  return { data, loading, error };
+  return { data, priceData, loading, error };
 }

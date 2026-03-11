@@ -74,6 +74,7 @@ export function App(): React.ReactElement {
   const [params, setParams] = useState<MetricParams>(DEFAULT_PARAMS);
   const [searchMode, setSearchMode] = useState(false);
   const [dataViewMode, setDataViewMode] = useState<DataViewMode>('chart');
+  const [showPrice, setShowPrice] = useState(true);
   const [leftSearchQuery, setLeftSearchQuery] = useState('');
   const [middleSearchQuery, setMiddleSearchQuery] = useState('');
   const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
@@ -302,11 +303,12 @@ export function App(): React.ReactElement {
     });
   }, [selectedMetricPath, validIntervals, validCurrencies]);
 
-  // Metric data (only fetched when both metric and asset are selected via Enter)
-  const { data, loading: dataLoading, error: dataError } = useMetricData(
+  // Metric data + price (fetched in parallel when both metric and asset are selected)
+  const { data, priceData, loading: dataLoading, error: dataError } = useMetricData(
     selectedMetricPath,
     selectedAssetId,
     params,
+    showPrice,
   );
   const dataNavReal = useListNavigation({ itemCount: data.length, viewportSize });
 
@@ -370,7 +372,6 @@ export function App(): React.ReactElement {
           lastMiddleAssetId.current = asset.symbol;
         }
       }
-      setActivePane(Pane.Data);
     }
   }, [activePane, leftIsAssets, allAssets, allMetricItems, filteredAssets, filteredMetricItems,
     assetNav.selectedIndex, metricNav.selectedIndex, filteredAssetNav.selectedIndex, filteredMetricNav.selectedIndex,
@@ -446,6 +447,7 @@ export function App(): React.ReactElement {
     if (input === 's') { setParams((p) => ({ ...p, since: cycleNext(SINCE_OPTIONS, p.since) })); return; }
     if (input === 'c') { setParams((p) => ({ ...p, currency: cycleNext(validCurrencies, p.currency) })); return; }
     if (input === 'v') { setDataViewMode((m) => (m === 'table' ? 'chart' : 'table')); return; }
+    if (input === 'p') { setShowPrice((p) => !p); return; }
   });
 
   const handleSearchSubmit = useCallback(() => { setSearchMode(false); }, []);
@@ -531,6 +533,8 @@ export function App(): React.ReactElement {
           visibleRange={dataNavReal.visibleRange}
           selectedIndex={dataNavReal.selectedIndex}
           viewMode={dataViewMode}
+          showPrice={showPrice}
+          priceData={priceData}
           chartWidth={Math.max(20, termWidth - 35 - 70 - 6)}
           chartHeight={viewportSize}
         />
