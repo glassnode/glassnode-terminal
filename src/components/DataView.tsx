@@ -19,6 +19,8 @@ interface DataViewProps {
   visibleRange: [number, number];
   selectedIndex: number;
   viewMode: DataViewMode;
+  showPrice: boolean;
+  priceData: DataPoint[];
   chartWidth: number;
   chartHeight: number;
 }
@@ -34,44 +36,64 @@ export function DataView({
   visibleRange,
   selectedIndex,
   viewMode,
+  showPrice,
+  priceData,
   chartWidth,
   chartHeight,
 }: DataViewProps): React.ReactElement {
   const [start, end] = visibleRange;
   const visible = data.slice(start, end);
 
-  // Prepare chart data: [timestamps[], values[]]
+  // Price lookup for table view
+  const priceMap = useMemo(() => {
+    if (!showPrice || priceData.length === 0) return null;
+    const map = new Map<number, number>();
+    for (const p of priceData) {
+      if (typeof p.v === 'number') map.set(p.t, p.v);
+    }
+    return map;
+  }, [showPrice, priceData]);
+
+  // Prepare chart data: [timestamps[], values[]] with optional price overlay
   const chartData = useMemo(() => {
     if (data.length === 0) return null;
     const timestamps: number[] = [];
     const values: number[] = [];
     for (const point of data) {
       timestamps.push(point.t);
-      if (typeof point.v === 'number') {
-        values.push(point.v);
-      } else {
-        values.push(0);
-      }
+      values.push(typeof point.v === 'number' ? point.v : 0);
     }
-    return [timestamps, values] as [number[], number[]];
-  }, [data]);
 
-  const chartOpts = useMemo(() => ({
-    width: 800,
-    height: 400,
-    series: [
+    if (priceMap) {
+      const prices: number[] = timestamps.map((t) => priceMap.get(t) ?? 0);
+      return [timestamps, values, prices] as [number[], number[], number[]];
+    }
+
+    return [timestamps, values] as [number[], number[]];
+  }, [data, priceMap]);
+
+  const chartOpts = useMemo(() => {
+    const series: object[] = [
       {},
       { stroke: 'cyan', label: 'Value', width: 1 },
-    ],
-    axes: [
-      { show: false },
-      { show: false },
-    ],
-  }), []);
+    ];
+    if (priceMap) {
+      series.push({ stroke: '#555', label: 'Price', width: 1, scale: 'price' });
+    }
+    return {
+      width: 800,
+      height: 400,
+      series,
+      axes: [
+        { show: false },
+        { show: false },
+      ],
+    };
+  }, [priceMap]);
 
   return (
     <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'}>
-      <ParamBar params={params} />
+      <ParamBar params={params} viewMode={viewMode} showPrice={showPrice} />
       <Box paddingX={1} gap={1}>
         <Text dimColor>
           {selectedMetric && selectedAsset
@@ -79,9 +101,6 @@ export function DataView({
             : 'Select a metric and asset'}
         </Text>
         {loading && <Spinner label="" />}
-        {data.length > 0 && (
-          <Text dimColor> [{viewMode === 'table' ? 'Table' : 'Chart'}]</Text>
-        )}
       </Box>
 
       {error && (
@@ -94,12 +113,14 @@ export function DataView({
         <Box flexDirection="column">
           <Box paddingX={1} gap={2}>
             <Text bold>{padRight('Date', 16)}</Text>
-            <Text bold>Value</Text>
+            <Text bold>{padRight('Value', 16)}</Text>
+            {priceMap && <Text bold dimColor>Price</Text>}
           </Box>
           {visible.map((point, i) => {
             const globalIndex = start + i;
             const isSelected = globalIndex === selectedIndex;
             const value = point.v !== undefined ? point.v : point.o;
+            const price = priceMap?.get(point.t);
             return (
               <Box key={point.t} paddingX={1} gap={2}>
                 <Text
@@ -112,8 +133,13 @@ export function DataView({
                   color={isSelected ? 'black' : undefined}
                   backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
                 >
-                  {formatValue(value)}
+                  {padRight(formatValue(value), 16)}
                 </Text>
+                {priceMap && (
+                  <Text dimColor>
+                    {price != null ? formatValue(price) : '—'}
+                  </Text>
+                )}
               </Box>
             );
           })}
