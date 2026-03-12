@@ -386,7 +386,7 @@ export function App(): React.ReactElement {
         }
       }
     }
-  }, [activePane, leftIsAssets, allAssets, allMetricItems, filteredAssets, filteredMetricItems,
+  }, [activePane, leftIsAssets, displayedAssets, displayedMetricItems, filteredAssets, filteredMetricItems,
     assetNav.selectedIndex, metricNav.selectedIndex, filteredAssetNav.selectedIndex, filteredMetricNav.selectedIndex,
     selectedMetricPath, selectedAssetId, assetsByMetric]);
 
