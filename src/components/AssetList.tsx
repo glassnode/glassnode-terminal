@@ -13,7 +13,7 @@ interface AssetListProps {
   searchQuery?: string;
 }
 
-export function AssetList({ assets, selectedIndex, visibleRange, isFocused, title, maxWidth = 35, searchQuery = '' }: AssetListProps): React.ReactElement {
+export function AssetList({ assets, selectedIndex, visibleRange, isFocused, title, maxWidth = 30, searchQuery = '' }: AssetListProps): React.ReactElement {
   const [start, end] = visibleRange;
   const visible = assets.slice(start, end);
 

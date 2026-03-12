@@ -13,7 +13,7 @@ interface MetricListProps {
   searchQuery?: string;
 }
 
-export function MetricList({ items, selectedIndex, visibleRange, isFocused, title, maxWidth = 70, searchQuery = '' }: MetricListProps): React.ReactElement {
+export function MetricList({ items, selectedIndex, visibleRange, isFocused, title, maxWidth = 50, searchQuery = '' }: MetricListProps): React.ReactElement {
   const [start, end] = visibleRange;
   const visible = items.slice(start, end);
 

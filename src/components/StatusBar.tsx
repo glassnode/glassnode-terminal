@@ -22,6 +22,7 @@ export function StatusBar({ browseMode }: StatusBarProps): React.ReactElement {
       <Text><Text color="yellow">s</Text>:since</Text>
       <Text><Text color="yellow">c</Text>:currency</Text>
       <Text><Text color="yellow">v</Text>:table/chart</Text>
+      <Text><Text color="yellow">l</Text>:logs</Text>
       <Text><Text color="yellow">q</Text>:quit</Text>
     </Box>
   );
