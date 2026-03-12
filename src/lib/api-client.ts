@@ -1,4 +1,11 @@
+import { createRequire } from 'node:module';
 import { GlassnodeAPI } from 'glassnode-api';
+import { log } from './logger.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../../package.json') as { version: string };
+
+export const USER_AGENT = `glassnode-terminal-${version}`;
 
 let clientInstance: GlassnodeAPI | null = null;
 
@@ -17,6 +24,16 @@ export function createClient(): GlassnodeAPI {
     );
   }
 
-  clientInstance = new GlassnodeAPI({ apiKey });
+  const customFetch: typeof globalThis.fetch = (input, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set('User-Agent', USER_AGENT);
+    return globalThis.fetch(input, { ...init, headers });
+  };
+
+  clientInstance = new GlassnodeAPI({
+    apiKey,
+    logger: (msg: string) => log('info', msg),
+    fetch: customFetch,
+  });
   return clientInstance;
 }

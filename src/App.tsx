@@ -8,12 +8,16 @@ import { MetricList } from './components/MetricList.js';
 import { DataView, type DataViewMode } from './components/DataView.js';
 import { StatusBar } from './components/StatusBar.js';
 import { SearchOverlay } from './components/SearchOverlay.js';
+import { LogView } from './components/LogView.js';
+import { PriceTicker } from './components/PriceTicker.js';
 import { Spinner } from './components/Spinner.js';
+import { usePulses, getTickerAssets } from './hooks/usePulses.js';
 import { loadStartupData, buildMetricList } from './lib/startup-data.js';
 import {
   Pane,
   INTERVALS,
   SINCE_OPTIONS,
+  SINCE_BY_INTERVAL,
   CURRENCIES,
   DEFAULT_PARAMS,
   type BrowseMode,
@@ -75,6 +79,7 @@ export function App(): React.ReactElement {
   const [searchMode, setSearchMode] = useState(false);
   const [dataViewMode, setDataViewMode] = useState<DataViewMode>('chart');
   const [showPrice, setShowPrice] = useState(true);
+  const [showLogs, setShowLogs] = useState(false);
   const [leftSearchQuery, setLeftSearchQuery] = useState('');
   const [middleSearchQuery, setMiddleSearchQuery] = useState('');
   const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
@@ -149,6 +154,14 @@ export function App(): React.ReactElement {
   const highlightedAssetSymbol = displayedAssets[assetNav.selectedIndex]?.symbol?.toUpperCase() ?? null;
   const highlightedMetricItem = displayedMetricItems[metricNav.selectedIndex];
   const highlightedMetricPath = highlightedMetricItem?.type === 'metric' ? highlightedMetricItem.path : null;
+
+  // Live price ticker via WebSocket — uses highlighted asset so cursor navigation updates subscription
+  const assetSymbols = useMemo(() => allAssets.map((a) => a.symbol), [allAssets]);
+  const prices = usePulses(assetSymbols, highlightedAssetSymbol);
+  const tickerAssets = useMemo(
+    () => getTickerAssets(assetSymbols, highlightedAssetSymbol),
+    [assetSymbols, highlightedAssetSymbol],
+  );
 
   // Filter metric items based on highlighted asset (asset-first mode) and search
   const filteredMetricItems = useMemo(() => {
@@ -443,11 +456,26 @@ export function App(): React.ReactElement {
       return;
     }
 
-    if (input === 'i') { setParams((p) => ({ ...p, interval: cycleNext(validIntervals, p.interval) })); return; }
-    if (input === 's') { setParams((p) => ({ ...p, since: cycleNext(SINCE_OPTIONS, p.since) })); return; }
+    if (input === 'i') {
+      setParams((p) => {
+        const newInterval = cycleNext(validIntervals, p.interval);
+        const allowed = SINCE_BY_INTERVAL[newInterval] ?? SINCE_OPTIONS;
+        const since = allowed.includes(p.since) ? p.since : allowed[allowed.length - 1]!;
+        return { ...p, interval: newInterval, since };
+      });
+      return;
+    }
+    if (input === 's') {
+      setParams((p) => {
+        const allowed = SINCE_BY_INTERVAL[p.interval] ?? SINCE_OPTIONS;
+        return { ...p, since: cycleNext(allowed, p.since) };
+      });
+      return;
+    }
     if (input === 'c') { setParams((p) => ({ ...p, currency: cycleNext(validCurrencies, p.currency) })); return; }
     if (input === 'v') { setDataViewMode((m) => (m === 'table' ? 'chart' : 'table')); return; }
     if (input === 'p') { setShowPrice((p) => !p); return; }
+    if (input === 'l') { setShowLogs((l) => !l); return; }
   });
 
   const handleSearchSubmit = useCallback(() => { setSearchMode(false); }, []);
@@ -471,11 +499,14 @@ export function App(): React.ReactElement {
 
   return (
     <Box flexDirection="column" height={termHeight}>
-      <Box paddingX={1}>
-        <Text bold color="cyan">glassnode-terminal</Text>
-        <Text dimColor>
-          {' '}[{browseMode === 'asset-first' ? 'Asset → Metric' : 'Metric → Asset'}]
-        </Text>
+      <Box paddingX={1} justifyContent="space-between">
+        <Box>
+          <Text bold color="cyan">glassnode-terminal</Text>
+          <Text dimColor>
+            {' '}[{browseMode === 'asset-first' ? 'Asset → Metric' : 'Metric → Asset'}]
+          </Text>
+        </Box>
+        <PriceTicker assets={tickerAssets} prices={prices} selectedAsset={selectedAssetId} />
       </Box>
 
       <Box flexGrow={1}>
@@ -521,23 +552,27 @@ export function App(): React.ReactElement {
           />
         )}
 
-        {/* Data pane */}
-        <DataView
-          data={data}
-          loading={dataLoading}
-          error={dataError}
-          params={params}
-          selectedMetric={selectedMetricPath}
-          selectedAsset={selectedAssetId}
-          isFocused={activePane === Pane.Data}
-          visibleRange={dataNavReal.visibleRange}
-          selectedIndex={dataNavReal.selectedIndex}
-          viewMode={dataViewMode}
-          showPrice={showPrice}
-          priceData={priceData}
-          chartWidth={Math.max(20, termWidth - 35 - 70 - 6)}
-          chartHeight={viewportSize}
-        />
+        {/* Data pane or Log view */}
+        {showLogs ? (
+          <LogView height={viewportSize} />
+        ) : (
+          <DataView
+            data={data}
+            loading={dataLoading}
+            error={dataError}
+            params={params}
+            selectedMetric={selectedMetricPath}
+            selectedAsset={selectedAssetId}
+            isFocused={activePane === Pane.Data}
+            visibleRange={dataNavReal.visibleRange}
+            selectedIndex={dataNavReal.selectedIndex}
+            viewMode={dataViewMode}
+            showPrice={showPrice}
+            priceData={priceData}
+            chartWidth={Math.max(20, termWidth - 30 - 50 - 6)}
+            chartHeight={viewportSize}
+          />
+        )}
       </Box>
 
       {searchMode ? (

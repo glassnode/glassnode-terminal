@@ -32,6 +32,8 @@ function parseRelativeDuration(input: string): number | null {
  * Supports: unix timestamps, relative durations (30d, 1h), ISO dates, RFC 3339.
  */
 export function parseTime(input: string): number {
+  if (input === 'all') return 0;
+
   if (isAllDigits(input)) {
     return parseInt(input, 10);
   }

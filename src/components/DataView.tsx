@@ -75,7 +75,7 @@ export function DataView({
   const chartOpts = useMemo(() => {
     const series: object[] = [
       {},
-      { stroke: 'cyan', label: 'Value', width: 1 },
+      { stroke: 'cyan', label: 'Value', width: 2 },
     ];
     if (priceMap) {
       series.push({ stroke: '#555', label: 'Price', width: 1, scale: 'price' });
