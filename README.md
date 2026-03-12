@@ -1,59 +1,82 @@
-# Glassnode Terminal
+# glassnode-terminal
 
-Interactive terminal UI for exploring Glassnode on-chain crypto data.
+Interactive terminal UI for exploring [Glassnode](https://glassnode.com) on-chain and market crypto data. Browse assets, metrics, and data in a three-pane explorer with charts, live price tickers, and keyboard navigation.
 
-Browse assets, metrics, and data in a three-pane explorer with keyboard navigation.
-
-## Installation
+## Install
 
 ```bash
-pnpm install
-pnpm run build
+npm install -g glassnode-terminal
 ```
 
-## Usage
+> **Note:** Requires Node.js >= 24 and system dependencies for [node-canvas](https://github.com/Automattic/node-canvas#compiling). On macOS: `brew install pkg-config cairo pango`.
 
-Set your Glassnode API key and launch:
+## Quick Start
+
+Run directly without installing:
+
+```bash
+GLASSNODE_API_KEY=your-key npx glassnode-terminal
+```
+
+Or install globally and run:
 
 ```bash
 export GLASSNODE_API_KEY=your-key
-pnpm start
+glassnode-terminal
 ```
 
-Or in one line:
-
-```bash
-GLASSNODE_API_KEY=your-key node dist/cli.js
-```
+Get your API key at [studio.glassnode.com/settings/api](https://studio.glassnode.com/settings/api).
 
 On first launch, the app fetches and caches all asset and metric metadata (this may take a minute). Subsequent launches load instantly from cache (`~/.glassnode-terminal/cache/`, 1-day TTL).
 
+## Features
+
+- **Three-pane explorer** — browse assets, metrics, and data side by side
+- **Two browse modes** — Asset → Metric or Metric → Asset (toggle with `m`)
+- **Live price ticker** — WebSocket-powered prices for top assets in the header
+- **Charts** — truecolor terminal charts via [ink-uplot](https://github.com/planadecu/ink-uplot) with dual Y-axes (metric + price overlay)
+- **Table view** — toggle between chart and table with `v`
+- **Search/filter** — press `/` to filter assets or metrics
+- **Parameter controls** — cycle interval, time range, and currency with keyboard shortcuts
+- **Log view** — press `l` to see HTTP/WS request logs for debugging
+
 ## Navigation
 
-The UI has three panes: a primary list, a secondary list, and a data view.
-
-| Key         | Action                                          |
-|-------------|-------------------------------------------------|
-| `Tab`       | Switch to next pane                             |
-| `Shift+Tab` | Switch to previous pane                         |
-| `↑` / `↓`  | Navigate within current pane                    |
-| `Enter`     | Select item                                     |
-| `/`         | Search/filter in current pane                   |
-| `Esc`       | Cancel search                                   |
-| `m`         | Toggle browse mode (Asset→Metric / Metric→Asset)|
-| `i`         | Cycle interval (10m, 1h, 24h, 1w, 1month)      |
-| `s`         | Cycle time range (1d, 7d, 30d, 90d, 1y)        |
-| `c`         | Cycle currency (usd, native)                    |
-| `q`         | Quit                                            |
+| Key | Action |
+|-----|--------|
+| `Tab` / `Shift+Tab` | Switch panes |
+| `↑` / `↓` | Navigate within current pane |
+| `Shift+↑` / `Shift+↓` | Page up / page down |
+| `←` / `→` | Previous pane / select item |
+| `Enter` | Select item |
+| `/` | Search/filter in current pane |
+| `Esc` | Cancel search |
+| `m` | Toggle browse mode (Asset → Metric / Metric → Asset) |
+| `i` | Cycle interval (10m, 1h, 24h, 1w, 1month) |
+| `s` | Cycle time range (1d, 7d, 30d, 90d, 1y, all) |
+| `c` | Cycle currency (usd, native) |
+| `v` | Toggle table / chart view |
+| `p` | Toggle price overlay |
+| `l` | Toggle log view |
+| `q` | Quit |
 
 ## Browse Modes
 
-- **Asset → Metric** (default): Pick an asset first, then browse its metrics, then view data.
-- **Metric → Asset**: Pick a metric first, then see which assets support it, then view data.
+- **Asset → Metric** (default): Pick an asset, then browse its available metrics.
+- **Metric → Asset**: Pick a metric, then see which assets support it.
 
 Press `m` to toggle between modes.
 
-## Requirements
+## Development
 
-- Node.js >= 24
-- A [Glassnode API key](https://studio.glassnode.com/settings/api)
+```bash
+git clone https://github.com/planadecu/glassnode-terminal.git
+cd glassnode-terminal
+pnpm install
+pnpm run build
+GLASSNODE_API_KEY=your-key pnpm start
+```
+
+## License
+
+MIT

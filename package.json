@@ -1,12 +1,12 @@
 {
   "name": "glassnode-terminal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Interactive TUI for exploring Glassnode on-chain and market crypto data",
   "type": "module",
   "main": "dist/cli.js",
   "types": "dist/cli.d.ts",
   "bin": {
-    "glassnode-terminal": "./dist/cli.js"
+    "glassnode-terminal": "dist/cli.js"
   },
   "files": [
     "dist"
@@ -95,8 +95,7 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public",
-    "tag": "latest",
-    "provenance": true
+    "tag": "latest"
   },
   "packageManager": "pnpm@10.32.1"
 }
