@@ -33,11 +33,8 @@ export const DEFAULT_PARAMS: MetricParams = {
   currency: 'usd',
 };
 
-/** Since options allowed per interval — 'all' is too much data for high-res intervals */
-export const SINCE_BY_INTERVAL: Record<string, readonly string[]> = {
+/** Since options allowed per interval — 'all' is too much data for high-res intervals.
+ *  Only exceptions are listed; unlisted intervals allow all SINCE_OPTIONS. */
+export const SINCE_BY_INTERVAL: Partial<Record<string, readonly string[]>> = {
   '10m': ['1d', '7d', '30d', '90d', '1y'],
-  '1h': SINCE_OPTIONS,
-  '24h': SINCE_OPTIONS,
-  '1w': SINCE_OPTIONS,
-  '1month': SINCE_OPTIONS,
 };

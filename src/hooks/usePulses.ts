@@ -33,7 +33,8 @@ function safeClose(ws: WebSocket) {
   }
 }
 
-function buildSubscription(assetSymbols: string[], highlightedAsset: string | null): string[] {
+/** Get display order: top5 non-stablecoin assets, with highlighted asset appended if not in top5 */
+export function getTickerAssets(assetSymbols: string[], highlightedAsset: string | null): string[] {
   const top5 = assetSymbols
     .filter((s) => !STABLECOINS.has(s.toUpperCase()))
     .slice(0, 5)
@@ -59,7 +60,7 @@ export function usePulses(
   const desiredRef = useRef<string[]>([]);
   const readyRef = useRef(false);
 
-  const desired = buildSubscription(assetSymbols, highlightedAsset);
+  const desired = getTickerAssets(assetSymbols, highlightedAsset);
   desiredRef.current = desired;
   const desiredKey = desired.join(',');
 
@@ -99,13 +100,14 @@ export function usePulses(
           }
           const symbol = msg.id.toUpperCase();
           setPrices((prev) => {
-            const next = new Map(prev);
             const existing = prev.get(symbol);
+            if (existing && existing.price === msg.price!) return prev;
             let direction: PulsePrice['direction'] = 'neutral';
             if (existing) {
               if (msg.price! > existing.price) direction = 'up';
               else if (msg.price! < existing.price) direction = 'down';
             }
+            const next = new Map(prev);
             next.set(symbol, { price: msg.price!, direction });
             return next;
           });
@@ -143,11 +145,10 @@ export function usePulses(
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || !readyRef.current) return;
-    const assets = desiredKey.split(',').filter(Boolean);
+    const assets = desiredRef.current;
     if (assets.length === 0) return;
 
-    const prev = subscribedRef.current.join(',');
-    if (prev === assets.join(',')) return;
+    if (subscribedRef.current.join(',') === desiredKey) return;
 
     const action = subscribedRef.current.length === 0 ? 'subscribe' : 'update_subscription';
     log('ws', `${action}: ${assets.join(', ')}`);
@@ -158,10 +159,3 @@ export function usePulses(
   return prices;
 }
 
-/** Get display order: top5 assets, with highlighted asset appended if not in top5 */
-export function getTickerAssets(
-  assetSymbols: string[],
-  highlightedAsset: string | null,
-): string[] {
-  return buildSubscription(assetSymbols, highlightedAsset);
-}
