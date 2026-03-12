@@ -1,6 +1,6 @@
 {
   "name": "glassnode-terminal",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Interactive TUI for exploring Glassnode on-chain and market crypto data",
   "type": "module",
   "main": "dist/cli.js",
@@ -22,7 +22,6 @@
   "scripts": {
     "build": "tsc",
     "sync-ink-uplot": "rm -rf node_modules/ink-uplot && mkdir -p node_modules/ink-uplot && cp ../ink-uplot/package.json node_modules/ink-uplot/ && cp -r ../ink-uplot/dist node_modules/ink-uplot/",
-    "postinstall": "pnpm run sync-ink-uplot",
     "dev": "tsx --watch src/cli.tsx",
     "start": "node dist/cli.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
@@ -65,7 +64,7 @@
     "glassnode-api": "^0.7.1",
     "ink": "^6.8.0",
     "ink-spinner": "^5.0.0",
-    "ink-uplot": "^0.1.2",
+    "ink-uplot": "^0.1.4",
     "path2d": "^0.3.1",
     "react": "^19.2.4",
     "uplot": "^1.6.32",
@@ -90,7 +89,7 @@
     ]
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=18.0.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
