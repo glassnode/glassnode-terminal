@@ -66,29 +66,36 @@ export function DataView({
 
     if (priceMap) {
       const prices: number[] = timestamps.map((t) => priceMap.get(t) ?? 0);
-      return [timestamps, values, prices] as [number[], number[], number[]];
+      // Price before value so uPlot draws it first (behind the main metric line).
+      return [timestamps, prices, values] as [number[], number[], number[]];
     }
 
     return [timestamps, values] as [number[], number[]];
   }, [data, priceMap]);
 
   const chartOpts = useMemo(() => {
-    const series: object[] = [
-      {},
-      { stroke: 'cyan', label: 'Value', width: 2 },
+    const METRIC_COLOR = '#22d3ee'; // cyan — main metric line + its left axis
+    const PRICE_COLOR = '#f59e0b'; // amber/orange — price line + its right axis
+    const X_AXIS_COLOR = '#aaaaaa'; // brighter than the default grey for contrast
+
+    // Main metric drawn last so it sits on top of the price overlay.
+    const valueSeries = { stroke: METRIC_COLOR, label: 'Value', width: 1 };
+    const priceSeries = { stroke: PRICE_COLOR, label: 'Price', width: 1, scale: 'price' };
+    const series: object[] = priceMap
+      ? [{}, priceSeries, valueSeries]
+      : [{}, valueSeries];
+
+    // uPlot draws these on the canvas: time on X (bottom), the main metric on the
+    // left Y, and the price on the right Y. Each Y axis is tinted to match its line.
+    const axes: object[] = [
+      { stroke: X_AXIS_COLOR }, // X — time range
+      { scale: 'y', side: 3, stroke: METRIC_COLOR }, // left — main metric
     ];
     if (priceMap) {
-      series.push({ stroke: '#555', label: 'Price', width: 1, scale: 'price' });
+      axes.push({ scale: 'price', side: 1, stroke: PRICE_COLOR }); // right — price
     }
-    return {
-      width: 800,
-      height: 400,
-      series,
-      axes: [
-        { show: false },
-        { show: false },
-      ],
-    };
+
+    return { width: 800, height: 400, series, axes };
   }, [priceMap]);
 
   return (
@@ -152,7 +159,6 @@ export function DataView({
           data={chartData}
           width={Math.max(20, chartWidth)}
           height={Math.max(5, chartHeight)}
-          threshold={30}
         />
       )}
 
