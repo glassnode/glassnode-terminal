@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, afterEach, beforeAll } from '@jest/globals';
+import { vi, describe, it, expect, afterEach, beforeAll } from 'vitest';
 import React from 'react';
 import type { MetricListItem } from '../../src/lib/types.js';
 
@@ -12,128 +12,141 @@ const KEYS = {
   backspace: '\x7F',
 };
 
-// --- Mock data ---
+// --- Hoisted mock state ---
+// vi.mock factories are hoisted above imports, so everything they reference
+// must be created inside vi.hoisted() (which runs first).
+const mocks = vi.hoisted(() => {
+  const mockAssets = [
+    { id: 'btc', symbol: 'BTC', name: 'Bitcoin' },
+    { id: 'eth', symbol: 'ETH', name: 'Ethereum' },
+    { id: 'ada', symbol: 'ADA', name: 'Cardano' },
+    { id: 'sol', symbol: 'SOL', name: 'Solana' },
+  ];
 
-const mockAssets = [
-  { id: 'btc', symbol: 'BTC', name: 'Bitcoin' },
-  { id: 'eth', symbol: 'ETH', name: 'Ethereum' },
-  { id: 'ada', symbol: 'ADA', name: 'Cardano' },
-  { id: 'sol', symbol: 'SOL', name: 'Solana' },
-];
+  const mockMetricPaths = [
+    '/market/price_usd_close',
+    '/market/price_usd_ohlc',
+    '/market/marketcap_usd',
+    '/indicators/sopr',
+  ];
 
-const mockMetricPaths = [
-  '/market/price_usd_close',
-  '/market/price_usd_ohlc',
-  '/market/marketcap_usd',
-  '/indicators/sopr',
-];
+  const mockMetadataMap: Record<string, any> = {
+    '/market/price_usd_close': {
+      path: '/market/price_usd_close',
+      parameters: { a: ['btc', 'eth', 'ada', 'sol'] },
+      descriptors: { name: 'Price USD Close', group: 'Market', tags: ['price'] },
+    },
+    '/market/price_usd_ohlc': {
+      path: '/market/price_usd_ohlc',
+      parameters: { a: ['btc', 'eth', 'ada', 'sol'] },
+      descriptors: { name: 'Price USD OHLC', group: 'Market', tags: ['price'] },
+    },
+    '/market/marketcap_usd': {
+      path: '/market/marketcap_usd',
+      parameters: { a: ['btc', 'eth', 'ada'] },
+      descriptors: { name: 'Market Cap USD', group: 'Market', tags: ['on-chain'] },
+    },
+    '/indicators/sopr': {
+      path: '/indicators/sopr',
+      parameters: { a: ['btc', 'eth'] },
+      descriptors: { name: 'SOPR', group: 'Indicators', tags: ['on-chain'] },
+    },
+  };
 
-const mockMetadataMap: Record<string, any> = {
-  '/market/price_usd_close': {
-    path: '/market/price_usd_close',
-    parameters: { a: ['btc', 'eth', 'ada', 'sol'] },
-    descriptors: { name: 'Price USD Close', group: 'Market', tags: ['price'] },
-  },
-  '/market/price_usd_ohlc': {
-    path: '/market/price_usd_ohlc',
-    parameters: { a: ['btc', 'eth', 'ada', 'sol'] },
-    descriptors: { name: 'Price USD OHLC', group: 'Market', tags: ['price'] },
-  },
-  '/market/marketcap_usd': {
-    path: '/market/marketcap_usd',
-    parameters: { a: ['btc', 'eth', 'ada'] },
-    descriptors: { name: 'Market Cap USD', group: 'Market', tags: ['on-chain'] },
-  },
-  '/indicators/sopr': {
-    path: '/indicators/sopr',
-    parameters: { a: ['btc', 'eth'] },
-    descriptors: { name: 'SOPR', group: 'Indicators', tags: ['on-chain'] },
-  },
-};
+  const mockMetricData = [
+    { t: 1709251200, v: 97234.5 },
+    { t: 1709337600, v: 98102.3 },
+    { t: 1709424000, v: 99500.0 },
+  ];
 
-const mockMetricData = [
-  { t: 1709251200, v: 97234.5 },
-  { t: 1709337600, v: 98102.3 },
-  { t: 1709424000, v: 99500.0 },
-];
+  // Pure functions copied from startup-data.ts (avoids circular import in mock)
+  const TAG_ORDER: Array<[string, string]> = [
+    ['price', 'Price'],
+    ['on-chain', 'On-Chain'],
+    ['volume', 'Volume'],
+    ['other', 'Other'],
+  ];
+  const TAG_SORT_INDEX = new Map(TAG_ORDER.map(([key], i) => [key, i]));
 
-// --- Pure function copied from startup-data.ts (avoids circular import in mock) ---
+  function buildMetricList(
+    metricPaths: string[],
+    metadataMap: Record<string, any>,
+  ): MetricListItem[] {
+    const items = metricPaths.map((path) => {
+      const meta = metadataMap[path];
+      const group = meta?.descriptors?.group ?? 'Other';
+      const tags = meta?.descriptors?.tags ?? [];
+      const tag = tags[0] ?? 'other';
+      const displayName = meta?.descriptors?.name ?? path;
+      return { path, group, tag, displayName };
+    });
 
-const TAG_ORDER: Array<[string, string]> = [
-  ['price', 'Price'],
-  ['on-chain', 'On-Chain'],
-  ['volume', 'Volume'],
-  ['other', 'Other'],
-];
-const TAG_SORT_INDEX = new Map(TAG_ORDER.map(([key], i) => [key, i]));
+    items.sort((a, b) =>
+      (TAG_SORT_INDEX.get(a.tag) ?? 99) - (TAG_SORT_INDEX.get(b.tag) ?? 99)
+      || a.group.localeCompare(b.group)
+      || a.displayName.localeCompare(b.displayName),
+    );
 
-function buildMetricList(
-  metricPaths: string[],
-  metadataMap: Record<string, any>,
-): MetricListItem[] {
-  const items = metricPaths.map((path) => {
-    const meta = metadataMap[path];
-    const group = meta?.descriptors?.group ?? 'Other';
-    const tags = meta?.descriptors?.tags ?? [];
-    const tag = tags[0] ?? 'other';
-    const displayName = meta?.descriptors?.name ?? path;
-    return { path, group, tag, displayName };
-  });
+    const result: MetricListItem[] = [];
+    let lastTag = '';
+    let lastGroup = '';
 
-  items.sort((a, b) =>
-    (TAG_SORT_INDEX.get(a.tag) ?? 99) - (TAG_SORT_INDEX.get(b.tag) ?? 99)
-    || a.group.localeCompare(b.group)
-    || a.displayName.localeCompare(b.displayName),
-  );
-
-  const result: MetricListItem[] = [];
-  let lastTag = '';
-  let lastGroup = '';
-
-  for (const item of items) {
-    if (item.tag !== lastTag) {
-      const label = TAG_ORDER.find(([k]) => k === item.tag)?.[1] ?? item.tag;
-      result.push({ type: 'tag-header', label });
-      lastTag = item.tag;
-      lastGroup = '';
+    for (const item of items) {
+      if (item.tag !== lastTag) {
+        const label = TAG_ORDER.find(([k]) => k === item.tag)?.[1] ?? item.tag;
+        result.push({ type: 'tag-header', label });
+        lastTag = item.tag;
+        lastGroup = '';
+      }
+      if (item.group !== lastGroup) {
+        result.push({ type: 'group-header', label: item.group });
+        lastGroup = item.group;
+      }
+      result.push({ type: 'metric', path: item.path, displayName: item.displayName });
     }
-    if (item.group !== lastGroup) {
-      result.push({ type: 'group-header', label: item.group });
-      lastGroup = item.group;
-    }
-    result.push({ type: 'metric', path: item.path, displayName: item.displayName });
+
+    return result;
   }
 
-  return result;
-}
+  function getMetricDisplayName(path: string, metadataMap: Record<string, any>): string {
+    const meta = metadataMap[path];
+    if (meta?.descriptors?.name) return meta.descriptors.name;
+    return path;
+  }
 
-function getMetricDisplayName(path: string, metadataMap: Record<string, any>): string {
-  const meta = metadataMap[path];
-  if (meta?.descriptors?.name) return meta.descriptors.name;
-  return path;
-}
+  const callMetricMock = vi.fn<() => Promise<typeof mockMetricData>>().mockResolvedValue(mockMetricData);
+
+  return {
+    mockAssets,
+    mockMetricPaths,
+    mockMetadataMap,
+    mockMetricData,
+    buildMetricList,
+    getMetricDisplayName,
+    callMetricMock,
+  };
+});
 
 // --- Setup mocks ---
 
-const callMetricMock = jest.fn<() => Promise<typeof mockMetricData>>().mockResolvedValue(mockMetricData);
-
-jest.unstable_mockModule('../../src/lib/startup-data.js', () => ({
-  loadStartupData: jest.fn().mockResolvedValue({
-    assets: mockAssets,
-    metrics: mockMetricPaths,
-    metricMetadataMap: mockMetadataMap,
+vi.mock('../../src/lib/startup-data.js', () => ({
+  loadStartupData: vi.fn().mockResolvedValue({
+    assets: mocks.mockAssets,
+    metrics: mocks.mockMetricPaths,
+    metricMetadataMap: mocks.mockMetadataMap,
   }),
-  buildMetricList,
-  getMetricDisplayName,
+  buildMetricList: mocks.buildMetricList,
+  getMetricDisplayName: mocks.getMetricDisplayName,
 }));
 
-jest.unstable_mockModule('../../src/lib/api-client.js', () => ({
-  createClient: jest.fn().mockReturnValue({
-    callMetric: callMetricMock,
+vi.mock('../../src/lib/api-client.js', () => ({
+  createClient: vi.fn().mockReturnValue({
+    callMetric: mocks.callMetricMock,
   }),
+  USER_AGENT: 'glassnode-terminal-test',
 }));
 
-jest.unstable_mockModule('ink-uplot', () => ({
+vi.mock('ink-uplot', () => ({
   InkUPlot: () => null,
 }));
 
@@ -154,7 +167,7 @@ describe('App integration', () => {
   });
 
   afterEach(() => {
-    callMetricMock.mockClear();
+    mocks.callMetricMock.mockClear();
   });
 
   it('per-pane search: /card filters assets only, → to metrics, /price filters metrics only, ↓↓ enter renders, esc, i cycles interval', async () => {
@@ -236,7 +249,7 @@ describe('App integration', () => {
 
     frame = instance.lastFrame()!;
     expect(frame).toContain('ADA');
-    expect(callMetricMock).toHaveBeenCalled();
+    expect(mocks.callMetricMock).toHaveBeenCalled();
 
     // Step 6: Escape (clean up any lingering state)
     instance.stdin.write(KEYS.escape);
