@@ -32,7 +32,10 @@ export function createClient(): GlassnodeAPI {
 
   clientInstance = new GlassnodeAPI({
     apiKey,
-    logger: (msg: string) => log('info', msg),
+    // The client calls logger with multiple args, e.g. logger('API call:', url).
+    // Join them all so the URL/params actually show up in the log view.
+    logger: (...parts: unknown[]) =>
+      log('info', parts.map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' ')),
     fetch: customFetch,
   });
   return clientInstance;

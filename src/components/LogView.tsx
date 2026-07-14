@@ -30,7 +30,7 @@ export function LogView({ height }: LogViewProps): React.ReactElement {
       <Box flexDirection="column" paddingX={1}>
         {visible.length === 0 && <Text dimColor>No log entries yet</Text>}
         {visible.map((entry, i) => (
-          <Text key={i} wrap="truncate">
+          <Text key={i} wrap="wrap">
             <Text dimColor>{formatTime(entry.time)}</Text>
             {' '}
             <Text color={LEVEL_COLOR[entry.level]}>[{entry.level}]</Text>
