@@ -19,15 +19,19 @@ const LEVEL_COLOR: Record<LogEntry['level'], string> = {
 
 export function LogView({ height }: LogViewProps): React.ReactElement {
   const entries = useLogs();
-  const visible = entries.slice(-Math.max(1, height));
+  // Lines wrap (see wrap="wrap" below), so a single entry can occupy more than
+  // one row — long API-call URLs especially. Reserve headroom by showing fewer
+  // entries than there are rows, and clip any remaining overflow so it can't
+  // bleed past this pane into the status bar or neighbouring panes.
+  const visible = entries.slice(-Math.max(1, Math.floor(height / 2)));
 
   return (
-    <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor="yellow">
+    <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor="yellow" overflow="hidden">
       <Box paddingX={1}>
         <Text bold color="yellow">Logs</Text>
         <Text dimColor> (press l to close)</Text>
       </Box>
-      <Box flexDirection="column" paddingX={1}>
+      <Box flexDirection="column" paddingX={1} overflow="hidden">
         {visible.length === 0 && <Text dimColor>No log entries yet</Text>}
         {visible.map((entry, i) => (
           <Text key={i} wrap="wrap">
