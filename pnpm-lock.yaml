@@ -15,8 +15,8 @@ importers:
         specifier: ^0.3.3
         version: 0.3.3
       glassnode-api:
-        specifier: ^0.7.4
-        version: 0.7.4
+        specifier: ^0.7.7
+        version: 0.7.7
       ink:
         specifier: ^7.1.0
         version: 7.1.0(@types/react@19.2.17)(react@19.2.7)
@@ -24,8 +24,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       ink-uplot:
-        specifier: ^0.2.10
-        version: 0.2.10(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(uplot@1.6.32)
+        specifier: ^0.2.13
+        version: 0.2.13(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(uplot@1.6.32)
       path2d:
         specifier: ^0.3.3
         version: 0.3.3
@@ -661,8 +661,9 @@ packages:
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
-  glassnode-api@0.7.4:
-    resolution: {integrity: sha512-nXxmxb1dnhHPpMqvkYm4N+WGf6u91xq7XtChsvzYYKsB/enBX64qVPlxJcWY86bFqZ7ogBB+zynR/BivL22IRQ==}
+  glassnode-api@0.7.7:
+    resolution: {integrity: sha512-35xDWIcHzLgaM7Pqh0yhSoy6nejZXOQU29jQozuSzwDy3ywn7wDstgTATlUS5owsPbMBA1z62iUkhNDgeLuEvQ==}
+    engines: {node: '>=18.0.0'}
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -693,8 +694,8 @@ packages:
       '@types/react':
         optional: true
 
-  ink-uplot@0.2.10:
-    resolution: {integrity: sha512-NkhUpB9O7hyc+EvF8WCBEExnNf1rhGXaIUT2GkfblqcaS7XP9/GMtgezyAkHjoHL+1IXG3w5WAbcU+cZBdntnw==}
+  ink-uplot@0.2.13:
+    resolution: {integrity: sha512-zXO16Ipy3+aTHKPadkaJBk4g6TVl2lD8uP71Rizr9WN3fcHHnses45NGnvvp2dt5Y/QLSKjt9wxF+5RXnAcEAQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       ink: '>=4.0.0'
@@ -1132,8 +1133,8 @@ packages:
   yoga-layout@3.2.1:
     resolution: {integrity: sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==}
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
 
@@ -1558,9 +1559,9 @@ snapshots:
 
   github-from-package@0.0.0: {}
 
-  glassnode-api@0.7.4:
+  glassnode-api@0.7.7:
     dependencies:
-      zod: 4.3.6
+      zod: 4.4.3
 
   ieee754@1.2.1: {}
 
@@ -1580,7 +1581,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  ink-uplot@0.2.10(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(uplot@1.6.32):
+  ink-uplot@0.2.13(ink@7.1.0(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(uplot@1.6.32):
     dependencies:
       canvas: 3.2.3
       chafa-wasm: 0.3.3
@@ -1979,4 +1980,4 @@ snapshots:
 
   yoga-layout@3.2.1: {}
 
-  zod@4.3.6: {}
+  zod@4.4.3: {}
