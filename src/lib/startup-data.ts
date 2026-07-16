@@ -2,7 +2,7 @@ import type { AssetMetadata, MetricMetadata } from 'glassnode-api';
 import { createClient, isX402Enabled, fetchX402AdvancedPaths } from './api-client.js';
 import { readCache, writeCache } from './cache.js';
 import type { MetricListItem } from './types.js';
-import { X402_CATALOG, type X402CatalogEntry } from './x402-catalog.js';
+import { X402_CATALOG, X402_ASSET_SETS, X402_ASSETS, type X402CatalogEntry } from './x402-catalog.js';
 
 export interface StartupData {
   assets: AssetMetadata[];
@@ -74,6 +74,12 @@ function catalogToStartupParts(entries: readonly X402CatalogEntry[]): {
   for (const e of entries) {
     metricMetadataMap[e.path] = {
       descriptors: { name: e.name, group: e.group, tags: e.tags },
+      // Parameters drive per-metric asset/interval/currency filtering in the UI.
+      parameters: {
+        a: [...(X402_ASSET_SETS[e.assets] ?? [])],
+        i: e.intervals,
+        c: e.currencies,
+      },
     } as unknown as MetricMetadata;
   }
   return { metrics: entries.map((e) => e.path), metricMetadataMap };
@@ -138,33 +144,28 @@ async function loadStartupDataApi(
 async function loadStartupDataX402(
   onProgress?: (message: string) => void,
 ): Promise<StartupData> {
-  const client = createClient();
+  // Assets come from the bundled snapshot (already market-cap ordered): x402 can't
+  // serve the marketcap bulk endpoint, and this avoids a paid asset-metadata call —
+  // so nothing at startup costs money; only opening data does.
+  const sortedAssets = X402_ASSETS as unknown as AssetMetadata[];
 
-  onProgress?.('Fetching assets...');
-  const since = String(Math.floor(Date.now() / 1000) - 86400);
-  const [assetData, mcapData] = await Promise.all([
-    client.getAssetMetadata(),
-    client.callBulkMetric('/market/marketcap_usd', { a: '*', i: '24h', s: since }).catch(() => []),
-  ]);
-  const sortedAssets = sortAssetsByMcap(assetData, mcapData);
+  let metrics: string[];
+  let metricMetadataMap: Record<string, MetricMetadata>;
 
-  let entries: readonly X402CatalogEntry[];
   if (process.env['X402_REFRESH_CATALOG']?.trim()) {
+    // Live refresh: fetch the advanced list + full per-metric metadata via x402 (paid).
     onProgress?.('Refreshing metric catalog via x402 (paid)...');
     const paths = await fetchX402AdvancedPaths();
-    const map = await fetchAllMetricMetadata(paths, (done, total) => {
+    metricMetadataMap = await fetchAllMetricMetadata(paths, (done, total) => {
       onProgress?.(`Fetching metric metadata via x402... ${done}/${total}`);
     });
-    entries = paths.map((path) => {
-      const d = map[path]?.descriptors;
-      return { path, name: d?.name ?? '', group: d?.group ?? '', tags: d?.tags ?? [] };
-    });
+    metrics = paths.filter((p) => !metricMetadataMap[p]?.is_pit);
   } else {
+    // Default: serve from the bundled catalog — no paid metadata calls.
     onProgress?.(`Loading ${X402_CATALOG.length} advanced metrics (bundled catalog)...`);
-    entries = X402_CATALOG;
+    ({ metrics, metricMetadataMap } = catalogToStartupParts(X402_CATALOG));
   }
 
-  const { metrics, metricMetadataMap } = catalogToStartupParts(entries);
   return { assets: sortedAssets, metrics, metricMetadataMap };
 }
 

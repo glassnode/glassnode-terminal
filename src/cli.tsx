@@ -9,6 +9,11 @@ function fail(message: string): void {
   setTimeout(() => process.exit(1), 100);
 }
 
+// --api / --x402 flags are a convenience alias for GLASSNODE_MODE.
+const argv = process.argv.slice(2);
+if (argv.includes('--x402')) process.env['GLASSNODE_MODE'] = 'x402';
+else if (argv.includes('--api')) process.env['GLASSNODE_MODE'] = 'api';
+
 const hasApiKey = !!process.env['GLASSNODE_API_KEY'];
 const hasX402 = !!process.env['X402_PRIVATE_KEY'];
 

@@ -39,7 +39,7 @@ export X402_API_URL=https://x402.glassnode.tech  # e.g. a testnet host (default:
 glassnode-terminal
 ```
 
-The wallet needs USDC on Base to cover per-call charges (a data query is ~$0.05). x402 takes precedence when both `X402_PRIVATE_KEY` and `GLASSNODE_API_KEY` are set. Keep the private key out of your shell history — prefer an `.env` file (loadable with `node --env-file=.env`).
+The wallet needs USDC on Base to cover per-call charges (a data query is ~$0.05). When both `X402_PRIVATE_KEY` and `GLASSNODE_API_KEY` are set, x402 wins by default — force a mode with `GLASSNODE_MODE=api|x402` or the `--api` / `--x402` flags. Keep the private key out of your shell history — prefer an `.env` file (see [`.env.example`](.env.example), loadable with `node --env-file=.env`).
 
 **What x402 mode shows.** x402 only serves the "advanced" metric tier (~326 metrics), and *every* call is paid (metadata included). So the metric catalog — names and grouping — is **bundled into the app at build time** (see [`scripts/generate-x402-metrics.mjs`](scripts/generate-x402-metrics.mjs)); browsing the list costs nothing, and you only pay for the assets list and the data you actually open. To refresh the bundled catalog live instead (paying ~$0.01 per metric), set `X402_REFRESH_CATALOG=1`. Maintainers regenerate the bundled catalog with `GLASSNODE_API_KEY=… pnpm run gen:x402-metrics`.
 

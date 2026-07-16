@@ -71,18 +71,31 @@ const userAgentFetch: typeof globalThis.fetch = (input, init) => {
  * Initialize the shared GlassnodeAPI client. Must be awaited once at startup,
  * before any createClient() call. Credentials are chosen from the environment:
  *
- *  - x402 pay-per-call: set GLASSNODE_X402_PRIVATE_KEY to a funded Base-mainnet
- *    wallet key. Requests hit x402.glassnode.com and settle in USDC per call.
- *    GLASSNODE_X402_MAX_PER_CALL caps spend per request (USDC, default '0.06').
+ *  - x402 pay-per-call: set X402_PRIVATE_KEY to a funded Base wallet key.
+ *    Requests hit x402.glassnode.com and settle in USDC per call. X402_MAX_PAYMENT
+ *    caps spend per request (USDC, default '0.06'); X402_API_URL overrides the host.
  *  - free/metered: set GLASSNODE_API_KEY.
  *
- * x402 takes precedence when both are present.
+ * GLASSNODE_MODE ('api' | 'x402') explicitly picks the mode; otherwise x402 is
+ * used when a wallet key is present.
  */
 export async function initClient(): Promise<GlassnodeAPI> {
   if (clientInstance) return clientInstance;
 
   const x402Key = process.env['X402_PRIVATE_KEY']?.trim();
-  if (x402Key) {
+  const apiKey = process.env['GLASSNODE_API_KEY'];
+
+  // Explicit toggle wins; otherwise default to x402 when a wallet key is present.
+  const mode = process.env['GLASSNODE_MODE']?.trim().toLowerCase();
+  if (mode && mode !== 'api' && mode !== 'x402') {
+    throw new Error(`Invalid GLASSNODE_MODE "${mode}" — expected "api" or "x402".`);
+  }
+  const wantX402 = mode === 'x402' || (mode !== 'api' && !!x402Key);
+
+  if (wantX402) {
+    if (!x402Key) {
+      throw new Error('x402 mode selected but X402_PRIVATE_KEY is not set.');
+    }
     // Optional peer deps, loaded only when x402 is actually used.
     const { createX402Fetch } = await import('glassnode-api/x402');
     const { privateKeyToAccount } = await import('viem/accounts');
@@ -107,16 +120,18 @@ export async function initClient(): Promise<GlassnodeAPI> {
     return clientInstance;
   }
 
-  const apiKey = process.env['GLASSNODE_API_KEY'];
   if (!apiKey) {
     throw new Error(
-      'No Glassnode credentials found.\n' +
-        'Set GLASSNODE_API_KEY (free/metered), or\n' +
-        'GLASSNODE_X402_PRIVATE_KEY (a funded Base wallet key) for x402 pay-per-call.',
+      mode === 'api'
+        ? 'API mode selected but GLASSNODE_API_KEY is not set.'
+        : 'No Glassnode credentials found.\n' +
+          'Set GLASSNODE_API_KEY (free/metered), or\n' +
+          'X402_PRIVATE_KEY (a funded Base wallet key) for x402 pay-per-call.',
     );
   }
 
   clientInstance = new GlassnodeAPI({ apiKey, fetch: userAgentFetch, logger });
+  log('info', 'API-key mode enabled');
   return clientInstance;
 }
 

@@ -44,7 +44,9 @@ if (!Array.isArray(paths) || paths.some((p) => typeof p !== 'string')) {
 paths.sort();
 console.log(`Fetching metadata for ${paths.length} advanced metrics...`);
 
-// 2. Per-metric metadata (name/group/tags), fetched with bounded concurrency.
+// 2. Per-metric metadata (name/group/tags + supported assets/intervals/currencies),
+//    fetched with bounded concurrency. The `a` (asset) lists are huge and mostly
+//    identical across metrics, so they're deduped into a shared pool below.
 const entries = new Array(paths.length);
 let done = 0;
 async function worker(startIdx) {
@@ -53,36 +55,107 @@ async function worker(startIdx) {
     try {
       const meta = await getJson(`${API}/v1/metadata/metric?path=${encodeURIComponent(path)}&api_key=${apiKey}`);
       const d = meta.descriptors ?? {};
-      entries[i] = { path, name: d.name ?? '', group: d.group ?? '', tags: Array.isArray(d.tags) ? d.tags : [] };
+      const p = meta.parameters ?? {};
+      entries[i] = {
+        path,
+        name: d.name ?? '',
+        group: d.group ?? '',
+        tags: Array.isArray(d.tags) ? d.tags : [],
+        assets: Array.isArray(p.a) ? p.a : [],
+        intervals: Array.isArray(p.i) ? p.i : [],
+        currencies: Array.isArray(p.c) ? p.c : [],
+      };
     } catch (err) {
       console.warn(`  ! ${path}: ${err.message}`);
-      entries[i] = { path, name: '', group: '', tags: [] };
+      entries[i] = { path, name: '', group: '', tags: [], assets: [], intervals: [], currencies: [] };
     }
     if (++done % 50 === 0 || done === paths.length) console.log(`  ${done}/${paths.length}`);
   }
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, (_, k) => worker(k)));
 
-// 3. Emit the catalog module.
-const body = entries
-  .map((e) => `  { path: ${JSON.stringify(e.path)}, name: ${JSON.stringify(e.name)}, group: ${JSON.stringify(e.group)}, tags: ${JSON.stringify(e.tags)} },`)
+// 2b. Assets, ordered by market cap — x402 can't serve the marketcap bulk endpoint,
+//     so we bake the ranked asset list in too (removes the paid asset call as well).
+console.log('Fetching assets + market caps...');
+const assetsResp = await getJson(`${API}/v1/metadata/assets?api_key=${apiKey}`);
+const allAssets = (assetsResp.data ?? []).map((a) => ({ id: a.id, symbol: a.symbol, name: a.name }));
+const since = Math.floor(Date.now() / 1000) - 86400;
+let mcapBySymbol = new Map();
+try {
+  const mcap = await getJson(`${API}/v1/metrics/market/marketcap_usd/bulk?a=*&i=24h&s=${since}&f=json&api_key=${apiKey}`);
+  const series = Array.isArray(mcap) ? mcap : (mcap.data ?? []); // response is { data: [{ t, bulk: [{a,v}] }] }
+  const latest = series.length ? series[series.length - 1] : null;
+  for (const e of latest?.bulk ?? []) mcapBySymbol.set(String(e.a).toUpperCase(), e.v);
+} catch (err) {
+  console.warn(`  ! marketcap fetch failed (${err.message}); assets will be alphabetical.`);
+}
+allAssets.sort((a, b) => {
+  const ma = mcapBySymbol.get(a.symbol.toUpperCase()) ?? 0;
+  const mb = mcapBySymbol.get(b.symbol.toUpperCase()) ?? 0;
+  return mb - ma || a.symbol.localeCompare(b.symbol);
+});
+console.log(`  ${allAssets.length} assets, top: ${allAssets.slice(0, 5).map((a) => a.symbol).join(', ')}`);
+
+// 3. Dedup the asset lists into a pool; each metric references its list by index.
+const assetPool = [];
+const assetIndex = new Map();
+function refAssets(list) {
+  const key = list.join('');
+  let idx = assetIndex.get(key);
+  if (idx === undefined) {
+    idx = assetPool.length;
+    assetPool.push(list);
+    assetIndex.set(key, idx);
+  }
+  return idx;
+}
+
+const catalogBody = entries
+  .map((e) => {
+    const aRef = refAssets(e.assets);
+    return `  { path: ${JSON.stringify(e.path)}, name: ${JSON.stringify(e.name)}, group: ${JSON.stringify(e.group)}, tags: ${JSON.stringify(e.tags)}, assets: ${aRef}, intervals: ${JSON.stringify(e.intervals)}, currencies: ${JSON.stringify(e.currencies)} },`;
+  })
   .join('\n');
 
+const poolBody = assetPool.map((list) => `  ${JSON.stringify(list)},`).join('\n');
+
 const out = `// AUTO-GENERATED — do not edit by hand.
-// The metric catalog reachable via x402 (the "advanced" product tier), with the
-// display metadata baked in so x402 mode needs no paid metadata calls.
+// The metric catalog reachable via x402 (the "advanced" product tier), with display
+// metadata + supported assets/intervals/currencies baked in so x402 mode needs no
+// paid metadata calls. The large per-metric asset lists are deduped into ASSET_SETS
+// and referenced by index.
 // Regenerate: GLASSNODE_API_KEY=xxx pnpm run gen:x402-metrics
 // Source: /v1/metadata/metrics?metadata_filter=${FILTER} + /v1/metadata/metric per path
+
+export interface X402Asset {
+  id: string;
+  symbol: string;
+  name: string;
+}
+
+/** All assets, pre-sorted by market cap (x402 can't fetch marketcap at runtime). */
+export const X402_ASSETS: readonly X402Asset[] = [
+${allAssets.map((a) => `  { id: ${JSON.stringify(a.id)}, symbol: ${JSON.stringify(a.symbol)}, name: ${JSON.stringify(a.name)} },`).join('\n')}
+];
+
+/** Deduped pools of supported-asset lists, referenced by X402CatalogEntry.assets. */
+export const X402_ASSET_SETS: readonly (readonly string[])[] = [
+${poolBody}
+];
 
 export interface X402CatalogEntry {
   path: string;
   name: string;
   group: string;
   tags: string[];
+  /** Index into X402_ASSET_SETS — the assets this metric supports. */
+  assets: number;
+  intervals: string[];
+  currencies: string[];
 }
 
 export const X402_CATALOG: readonly X402CatalogEntry[] = [
-${body}
+${catalogBody}
 ];
 
 /** O(1) membership test for the advanced (x402-reachable) metric paths. */
