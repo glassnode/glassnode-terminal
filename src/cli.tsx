@@ -10,13 +10,13 @@ function fail(message: string): void {
 }
 
 const hasApiKey = !!process.env['GLASSNODE_API_KEY'];
-const hasX402 = !!process.env['GLASSNODE_X402_PRIVATE_KEY'];
+const hasX402 = !!process.env['X402_PRIVATE_KEY'];
 
 if (!hasApiKey && !hasX402) {
   fail(
     'Error: no Glassnode credentials.\n' +
       'Set GLASSNODE_API_KEY for the free/metered API, or\n' +
-      'GLASSNODE_X402_PRIVATE_KEY (a funded Base wallet key) for x402 pay-per-call.',
+      'X402_PRIVATE_KEY (a funded Base wallet key) for x402 pay-per-call.',
   );
 } else {
   try {

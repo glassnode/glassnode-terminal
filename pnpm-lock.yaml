@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@x402/evm':
-        specifier: 2.17.0
-        version: 2.17.0(typescript@7.0.2)
+        specifier: 2.18.0
+        version: 2.18.0(typescript@7.0.2)
       '@x402/fetch':
-        specifier: 2.17.0
-        version: 2.17.0
+        specifier: 2.18.0
+        version: 2.18.0
       canvas:
         specifier: ^3.2.3
         version: 3.2.3
@@ -22,7 +22,7 @@ importers:
         version: 0.3.3
       glassnode-api:
         specifier: ^0.8.2
-        version: 0.8.2(@x402/evm@2.17.0(typescript@7.0.2))(@x402/fetch@2.17.0)(viem@2.55.0(typescript@7.0.2)(zod@4.4.3))
+        version: 0.8.2(@x402/evm@2.18.0(typescript@7.0.2))(@x402/fetch@2.18.0)(viem@2.55.0(typescript@7.0.2)(zod@4.4.3))
       ink:
         specifier: ^7.1.0
         version: 7.1.0(@types/react@19.2.17)(react@19.2.7)
@@ -548,14 +548,14 @@ packages:
   '@vitest/utils@4.1.10':
     resolution: {integrity: sha512-fy9am/HWxbaGt/Sawrp90vt6Y6jQwf1RX77cz3uwoJwJVMli/e1IEwRPnMNJ7vKfPTwo0diXifkpPvwH9v7nGA==}
 
-  '@x402/core@2.17.0':
-    resolution: {integrity: sha512-BBooe9Kewl5KLaKadElFwhZzZ+n/X/m2djzGtc7OY51D8fk2vHTVvDZtBFEJYdJxtQoUZMKX73hew0ss81FENQ==}
+  '@x402/core@2.18.0':
+    resolution: {integrity: sha512-3LB5m0Yx7C38ks8jDqTGYPZ2FnLzlH9pTlGvE8er2ujS1ri12sXXvWwnmYsmh3ZkXSDbV3BKU8oRKULatPp0Hg==}
 
-  '@x402/evm@2.17.0':
-    resolution: {integrity: sha512-MjeouRdVJ1Y20Ikk03RHlnyOuo2FRkh0Nnrxt8aku2qt5fr5M7U8pUGn5iR6aFfRK3xlh48bp0Kypv1zjKuegw==}
+  '@x402/evm@2.18.0':
+    resolution: {integrity: sha512-iiA5zqqJMcFdMEO+nvdctiWHcSn1EBpN8Dic0beGoxmoWX2Y8DnDHEROL/E0S3bUFpQlwTKkp4rie4wvqhsBvg==}
 
-  '@x402/fetch@2.17.0':
-    resolution: {integrity: sha512-iy6ar1JTgs4gzdlc2q2Z7nuL5keBkQhoD4v5niVlTwLoivVvHnAA0p/wK5WTWRrJ1b+el8pthkjFS0Jc3nMIIg==}
+  '@x402/fetch@2.18.0':
+    resolution: {integrity: sha512-yuFLM8pIOWUNmbRwQpnO1az4IauW7dJ3yNDJkMkUkMXHLWLMeFwSwsqsRYBG7DEXcQCnb6iKY4Wps/qXUrcYOQ==}
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -1542,13 +1542,13 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
-  '@x402/core@2.17.0':
+  '@x402/core@2.18.0':
     dependencies:
       zod: 3.25.76
 
-  '@x402/evm@2.17.0(typescript@7.0.2)':
+  '@x402/evm@2.18.0(typescript@7.0.2)':
     dependencies:
-      '@x402/core': 2.17.0
+      '@x402/core': 2.18.0
       viem: 2.55.0(typescript@7.0.2)(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
@@ -1556,9 +1556,9 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@x402/fetch@2.17.0':
+  '@x402/fetch@2.18.0':
     dependencies:
-      '@x402/core': 2.17.0
+      '@x402/core': 2.18.0
 
   abitype@1.2.3(typescript@7.0.2)(zod@3.25.76):
     optionalDependencies:
@@ -1703,12 +1703,12 @@ snapshots:
 
   github-from-package@0.0.0: {}
 
-  glassnode-api@0.8.2(@x402/evm@2.17.0(typescript@7.0.2))(@x402/fetch@2.17.0)(viem@2.55.0(typescript@7.0.2)(zod@4.4.3)):
+  glassnode-api@0.8.2(@x402/evm@2.18.0(typescript@7.0.2))(@x402/fetch@2.18.0)(viem@2.55.0(typescript@7.0.2)(zod@4.4.3)):
     dependencies:
       zod: 4.4.3
     optionalDependencies:
-      '@x402/evm': 2.17.0(typescript@7.0.2)
-      '@x402/fetch': 2.17.0
+      '@x402/evm': 2.18.0(typescript@7.0.2)
+      '@x402/fetch': 2.18.0
       viem: 2.55.0(typescript@7.0.2)(zod@4.4.3)
 
   ieee754@1.2.1: {}

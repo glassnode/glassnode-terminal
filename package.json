@@ -27,7 +27,8 @@
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "gen:x402-metrics": "node scripts/generate-x402-metrics.mjs"
   },
   "keywords": [
     "glassnode",
@@ -60,8 +61,8 @@
   },
   "homepage": "https://github.com/planadecu/glassnode-terminal#readme",
   "dependencies": {
-    "@x402/evm": "2.17.0",
-    "@x402/fetch": "2.17.0",
+    "@x402/evm": "2.18.0",
+    "@x402/fetch": "2.18.0",
     "canvas": "^3.2.3",
     "chafa-wasm": "^0.3.3",
     "glassnode-api": "^0.8.2",

@@ -8,6 +8,26 @@ const { version } = require('../../package.json') as { version: string };
 export const USER_AGENT = `glassnode-terminal-${version}`;
 
 let clientInstance: GlassnodeAPI | null = null;
+let x402Enabled = false;
+let x402FetchStore: typeof globalThis.fetch | null = null;
+let x402BaseUrl = 'https://x402.glassnode.com';
+
+/** True when the client is in x402 pay-per-call mode (set by initClient). */
+export function isX402Enabled(): boolean {
+  return x402Enabled;
+}
+
+/**
+ * Fetch the current "advanced" (x402-reachable) metric paths live via x402.
+ * This is one paid metadata call — used only when refreshing the bundled catalog.
+ */
+export async function fetchX402AdvancedPaths(): Promise<string[]> {
+  if (!x402FetchStore) throw new Error('fetchX402AdvancedPaths is only available in x402 mode.');
+  const filter = encodeURIComponent('metadata.products.exists(product,product=="advanced")');
+  const res = await x402FetchStore(`${x402BaseUrl}/v1/metadata/metrics?metadata_filter=${filter}`);
+  if (!res.ok) throw new Error(`Failed to fetch advanced metric list: ${res.status}`);
+  return (await res.json()) as string[];
+}
 
 /**
  * Redact secrets before anything reaches the log view. The client logs request
@@ -35,11 +55,16 @@ const logger = (...parts: unknown[]) =>
     ),
   );
 
-/** Base fetch that tags every request with our User-Agent. */
+/**
+ * Base fetch that tags every request with our User-Agent, preserving all other
+ * headers. Normalizing through `new Request(input, init)` keeps headers from a
+ * Request input intact — important for x402, which retries with a Request that
+ * carries the `X-Payment` header; rebuilding headers from only `init` would drop it.
+ */
 const userAgentFetch: typeof globalThis.fetch = (input, init) => {
-  const headers = new Headers(init?.headers);
-  headers.set('User-Agent', USER_AGENT);
-  return globalThis.fetch(input, { ...init, headers });
+  const req = new Request(input as RequestInfo, init);
+  req.headers.set('User-Agent', USER_AGENT);
+  return globalThis.fetch(req);
 };
 
 /**
@@ -56,7 +81,7 @@ const userAgentFetch: typeof globalThis.fetch = (input, init) => {
 export async function initClient(): Promise<GlassnodeAPI> {
   if (clientInstance) return clientInstance;
 
-  const x402Key = process.env['GLASSNODE_X402_PRIVATE_KEY']?.trim();
+  const x402Key = process.env['X402_PRIVATE_KEY']?.trim();
   if (x402Key) {
     // Optional peer deps, loaded only when x402 is actually used.
     const { createX402Fetch } = await import('glassnode-api/x402');
@@ -64,7 +89,8 @@ export async function initClient(): Promise<GlassnodeAPI> {
 
     const pk = (x402Key.startsWith('0x') ? x402Key : `0x${x402Key}`) as `0x${string}`;
     const account = privateKeyToAccount(pk);
-    const maxPerCall = process.env['GLASSNODE_X402_MAX_PER_CALL']?.trim() || '0.06';
+    const maxPerCall = process.env['X402_MAX_PAYMENT']?.trim() || '0.06';
+    const apiUrl = process.env['X402_API_URL']?.trim() || undefined; // e.g. testnet; defaults to x402.glassnode.com
 
     const x402Fetch = await createX402Fetch({
       account,
@@ -72,8 +98,12 @@ export async function initClient(): Promise<GlassnodeAPI> {
       fetch: userAgentFetch,
     });
 
-    clientInstance = new GlassnodeAPI({ x402: true, fetch: x402Fetch, logger });
-    log('info', `x402 enabled — wallet ${account.address}, max ${maxPerCall} USDC/call`);
+    clientInstance = new GlassnodeAPI({ x402: true, apiUrl, fetch: x402Fetch, logger });
+    x402Enabled = true;
+    // Stash the paid fetch + base URL for the optional live catalog refresh.
+    x402FetchStore = x402Fetch;
+    x402BaseUrl = apiUrl || 'https://x402.glassnode.com';
+    log('info', `x402 enabled — wallet ${account.address}, max ${maxPerCall} USDC/call${apiUrl ? ` @ ${apiUrl}` : ''}`);
     return clientInstance;
   }
 

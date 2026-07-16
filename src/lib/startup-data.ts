@@ -1,7 +1,8 @@
 import type { AssetMetadata, MetricMetadata } from 'glassnode-api';
-import { createClient } from './api-client.js';
+import { createClient, isX402Enabled, fetchX402AdvancedPaths } from './api-client.js';
 import { readCache, writeCache } from './cache.js';
 import type { MetricListItem } from './types.js';
+import { X402_CATALOG, type X402CatalogEntry } from './x402-catalog.js';
 
 export interface StartupData {
   assets: AssetMetadata[];
@@ -44,34 +45,11 @@ async function fetchAllMetricMetadata(
   return result;
 }
 
-/**
- * Load all startup data, using 1-day file cache when available.
- * On cache miss, fetches from API and saves to cache.
- */
-export async function loadStartupData(
-  onProgress?: (message: string) => void,
-): Promise<StartupData> {
-  // Try cache first
-  const cached = readCache<StartupData>('startup-data');
-  if (cached) {
-    onProgress?.('Loaded from cache');
-    return cached;
-  }
-
-  const client = createClient();
-
-  // Fetch assets + market caps + metric list in parallel
-  onProgress?.('Fetching assets and metrics...');
-  const since = String(Math.floor(Date.now() / 1000) - 86400);
-  const [assetData, mcapData, metricPaths] = await Promise.all([
-    client.getAssetMetadata(),
-    client
-      .callBulkMetric('/market/marketcap_usd', { a: '*', i: '24h', s: since })
-      .catch(() => []),
-    client.getMetricList(),
-  ]);
-
-  // Sort assets by market cap
+/** Sort assets by descending market cap, then symbol. */
+function sortAssetsByMcap(
+  assetData: AssetMetadata[],
+  mcapData: Array<{ bulk: Array<{ a: string; v: number }> }>,
+): AssetMetadata[] {
   const mcapBySymbol = new Map<string, number>();
   if (mcapData.length > 0) {
     const latest = mcapData[mcapData.length - 1]!;
@@ -79,33 +57,115 @@ export async function loadStartupData(
       mcapBySymbol.set(entry.a.toUpperCase(), entry.v);
     }
   }
-
-  const sortedAssets = [...assetData].sort((a, b) => {
+  return [...assetData].sort((a, b) => {
     const mcapA = mcapBySymbol.get(a.symbol.toUpperCase()) ?? 0;
     const mcapB = mcapBySymbol.get(b.symbol.toUpperCase()) ?? 0;
     if (mcapA !== mcapB) return mcapB - mcapA;
     return a.symbol.localeCompare(b.symbol);
   });
+}
 
-  // Fetch all metric metadata (with progress)
+/** Turn catalog entries into the metrics list + a metadata map buildMetricList understands. */
+function catalogToStartupParts(entries: readonly X402CatalogEntry[]): {
+  metrics: string[];
+  metricMetadataMap: Record<string, MetricMetadata>;
+} {
+  const metricMetadataMap: Record<string, MetricMetadata> = {};
+  for (const e of entries) {
+    metricMetadataMap[e.path] = {
+      descriptors: { name: e.name, group: e.group, tags: e.tags },
+    } as unknown as MetricMetadata;
+  }
+  return { metrics: entries.map((e) => e.path), metricMetadataMap };
+}
+
+/**
+ * Load all startup data, using 1-day file cache when available.
+ * On cache miss, fetches from API and saves to cache.
+ */
+export async function loadStartupData(
+  onProgress?: (message: string) => void,
+): Promise<StartupData> {
+  // Cache is per-mode: x402 shows only the ~326 advanced metrics, API mode shows all.
+  const cacheKey = isX402Enabled() ? 'startup-data-x402' : 'startup-data';
+
+  const cached = readCache<StartupData>(cacheKey);
+  if (cached) {
+    onProgress?.('Loaded from cache');
+    return cached;
+  }
+
+  const data = isX402Enabled()
+    ? await loadStartupDataX402(onProgress)
+    : await loadStartupDataApi(onProgress);
+
+  writeCache(cacheKey, data);
+  onProgress?.('Done');
+  return data;
+}
+
+/** Full-API mode: fetch the whole metric list + per-metric metadata (free/metered). */
+async function loadStartupDataApi(
+  onProgress?: (message: string) => void,
+): Promise<StartupData> {
+  const client = createClient();
+
+  onProgress?.('Fetching assets and metrics...');
+  const since = String(Math.floor(Date.now() / 1000) - 86400);
+  const [assetData, mcapData, metricPaths] = await Promise.all([
+    client.getAssetMetadata(),
+    client.callBulkMetric('/market/marketcap_usd', { a: '*', i: '24h', s: since }).catch(() => []),
+    client.getMetricList(),
+  ]);
+
+  const sortedAssets = sortAssetsByMcap(assetData, mcapData);
+
   onProgress?.(`Fetching metadata for ${metricPaths.length} metrics...`);
   const metricMetadataMap = await fetchAllMetricMetadata(metricPaths, (done, total) => {
     onProgress?.(`Fetching metric metadata... ${done}/${total}`);
   });
 
   const filteredMetrics = metricPaths.filter((p) => !metricMetadataMap[p]?.is_pit);
+  return { assets: sortedAssets, metrics: filteredMetrics, metricMetadataMap };
+}
 
-  const data: StartupData = {
-    assets: sortedAssets,
-    metrics: filteredMetrics,
-    metricMetadataMap,
-  };
+/**
+ * Full-x402 mode: the metric list is restricted to the "advanced" tier, and every
+ * call is paid — so the metric catalog comes from the bundled build-time snapshot
+ * (no paid metadata calls). Set X402_REFRESH_CATALOG=1 to instead re-fetch it live
+ * via x402 (pays ~$0.01 per metric). Only assets + the data you open cost money.
+ */
+async function loadStartupDataX402(
+  onProgress?: (message: string) => void,
+): Promise<StartupData> {
+  const client = createClient();
 
-  // Save to cache
-  writeCache('startup-data', data);
-  onProgress?.('Done');
+  onProgress?.('Fetching assets...');
+  const since = String(Math.floor(Date.now() / 1000) - 86400);
+  const [assetData, mcapData] = await Promise.all([
+    client.getAssetMetadata(),
+    client.callBulkMetric('/market/marketcap_usd', { a: '*', i: '24h', s: since }).catch(() => []),
+  ]);
+  const sortedAssets = sortAssetsByMcap(assetData, mcapData);
 
-  return data;
+  let entries: readonly X402CatalogEntry[];
+  if (process.env['X402_REFRESH_CATALOG']?.trim()) {
+    onProgress?.('Refreshing metric catalog via x402 (paid)...');
+    const paths = await fetchX402AdvancedPaths();
+    const map = await fetchAllMetricMetadata(paths, (done, total) => {
+      onProgress?.(`Fetching metric metadata via x402... ${done}/${total}`);
+    });
+    entries = paths.map((path) => {
+      const d = map[path]?.descriptors;
+      return { path, name: d?.name ?? '', group: d?.group ?? '', tags: d?.tags ?? [] };
+    });
+  } else {
+    onProgress?.(`Loading ${X402_CATALOG.length} advanced metrics (bundled catalog)...`);
+    entries = X402_CATALOG;
+  }
+
+  const { metrics, metricMetadataMap } = catalogToStartupParts(entries);
+  return { assets: sortedAssets, metrics, metricMetadataMap };
 }
 
 /**

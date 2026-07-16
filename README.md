@@ -29,18 +29,21 @@ Get your API key at [studio.glassnode.com/settings/api](https://studio.glassnode
 
 ### x402 pay-per-call (no API key)
 
-Instead of an API key, you can pay per request in USDC on Base via [x402](https://x402.glassnode.com). Point `GLASSNODE_X402_PRIVATE_KEY` at a funded Base-mainnet wallet key:
+Instead of an API key, you can pay per request in USDC on Base via [x402](https://x402.glassnode.com). The terminal runs in **one of two modes** — full API (an API key) or full x402 (a funded wallet) — chosen by which env vars are set. Point `X402_PRIVATE_KEY` at a funded Base wallet key:
 
 ```bash
-export GLASSNODE_X402_PRIVATE_KEY=0xYOUR_WALLET_PRIVATE_KEY
-# optional: cap spend per call in USDC (default 0.06)
-export GLASSNODE_X402_MAX_PER_CALL=0.06
+export X402_PRIVATE_KEY=0xYOUR_WALLET_PRIVATE_KEY
+# optional overrides:
+export X402_MAX_PAYMENT=0.06                     # per-call spend cap in USDC (default 0.06)
+export X402_API_URL=https://x402.glassnode.tech  # e.g. a testnet host (default: x402.glassnode.com)
 glassnode-terminal
 ```
 
-The wallet needs USDC on Base to cover per-call charges. x402 takes precedence when both it and `GLASSNODE_API_KEY` are set. Keep the private key out of your shell history — prefer an `.env` file (loadable with `node --env-file=.env`).
+The wallet needs USDC on Base to cover per-call charges (a data query is ~$0.05). x402 takes precedence when both `X402_PRIVATE_KEY` and `GLASSNODE_API_KEY` are set. Keep the private key out of your shell history — prefer an `.env` file (loadable with `node --env-file=.env`).
 
-On first launch, the app fetches and caches all asset and metric metadata (this may take a minute). Subsequent launches load instantly from cache (`~/.glassnode-terminal/cache/`, 1-day TTL).
+**What x402 mode shows.** x402 only serves the "advanced" metric tier (~326 metrics), and *every* call is paid (metadata included). So the metric catalog — names and grouping — is **bundled into the app at build time** (see [`scripts/generate-x402-metrics.mjs`](scripts/generate-x402-metrics.mjs)); browsing the list costs nothing, and you only pay for the assets list and the data you actually open. To refresh the bundled catalog live instead (paying ~$0.01 per metric), set `X402_REFRESH_CATALOG=1`. Maintainers regenerate the bundled catalog with `GLASSNODE_API_KEY=… pnpm run gen:x402-metrics`.
+
+On first launch, the app fetches and caches startup data (`~/.glassnode-terminal/cache/`, 1-day TTL; separate cache per mode). Subsequent launches load instantly.
 
 ## Features
 
