@@ -27,6 +27,19 @@ glassnode-terminal
 
 Get your API key at [studio.glassnode.com/settings/api](https://studio.glassnode.com/settings/api).
 
+### x402 pay-per-call (no API key)
+
+Instead of an API key, you can pay per request in USDC on Base via [x402](https://x402.glassnode.com). Point `GLASSNODE_X402_PRIVATE_KEY` at a funded Base-mainnet wallet key:
+
+```bash
+export GLASSNODE_X402_PRIVATE_KEY=0xYOUR_WALLET_PRIVATE_KEY
+# optional: cap spend per call in USDC (default 0.06)
+export GLASSNODE_X402_MAX_PER_CALL=0.06
+glassnode-terminal
+```
+
+The wallet needs USDC on Base to cover per-call charges. x402 takes precedence when both it and `GLASSNODE_API_KEY` are set. Keep the private key out of your shell history — prefer an `.env` file (loadable with `node --env-file=.env`).
+
 On first launch, the app fetches and caches all asset and metric metadata (this may take a minute). Subsequent launches load instantly from cache (`~/.glassnode-terminal/cache/`, 1-day TTL).
 
 ## Features
