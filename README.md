@@ -27,7 +27,41 @@ glassnode-terminal
 
 Get your API key at [studio.glassnode.com/settings/api](https://studio.glassnode.com/settings/api).
 
-On first launch, the app fetches and caches all asset and metric metadata (this may take a minute). Subsequent launches load instantly from cache (`~/.glassnode-terminal/cache/`, 1-day TTL).
+### x402 pay-per-call (no API key)
+
+Instead of an API key, you can pay per request in USDC on Base via [x402](https://x402.glassnode.com). The terminal runs in **one of two modes** — full API (an API key) or full x402 (a funded wallet). Point `X402_PRIVATE_KEY` at a funded Base wallet key:
+
+```bash
+export X402_PRIVATE_KEY=0xYOUR_WALLET_PRIVATE_KEY
+export X402_MAX_PAYMENT=0.06   # optional: per-call spend cap in USDC (default 0.06)
+glassnode-terminal
+```
+
+The wallet needs USDC on Base to cover per-call charges (a data query is ~$0.05).
+
+**What x402 mode shows.** x402 only serves the "advanced" metric tier (~326 metrics), and *every* call is paid (metadata included). So the metric catalog (names, grouping, supported assets) **and** the market-cap-ordered asset list are **bundled into the app at build time** (see [`scripts/generate-x402-metrics.mjs`](scripts/generate-x402-metrics.mjs)). Startup is instant and free — you only pay for the data you actually open. To refresh the catalog live instead (paying ~$0.01 per metric), set `X402_REFRESH_CATALOG=1`. Maintainers regenerate the bundle with `GLASSNODE_API_KEY=… pnpm run gen:x402-metrics`.
+
+### Configuration
+
+Set these via the environment or an `.env` file (see [`.env.example`](.env.example); load with `node --env-file=.env dist/cli.js`). Keep the wallet key out of your shell history.
+
+| Variable | Mode | Description |
+|---|---|---|
+| `GLASSNODE_API_KEY` | API | API key for the free/metered API. |
+| `X402_PRIVATE_KEY` | x402 | Funded Base wallet private key (pay-per-call). |
+| `X402_MAX_PAYMENT` | x402 | Per-call spend cap in USDC (default `0.06`). |
+| `X402_API_URL` | x402 | Override the x402 host (default `x402.glassnode.com`); e.g. a testnet host. |
+| `X402_REFRESH_CATALOG` | x402 | Set to `1` to re-fetch the metric catalog live via x402 (paid) instead of using the bundle. |
+| `GLASSNODE_MODE` | both | Force `api` or `x402` when both credentials are set (default: x402 wins). |
+
+When both credentials are present, x402 wins unless you force a mode — via `GLASSNODE_MODE`, or the equivalent `--api` / `--x402` CLI flags:
+
+```bash
+glassnode-terminal --api     # force the API-key path
+glassnode-terminal --x402    # force x402
+```
+
+On first launch the app caches startup data (`~/.glassnode-terminal/cache/`, 1-day TTL; separate cache per mode). Subsequent launches load instantly.
 
 ## Features
 
