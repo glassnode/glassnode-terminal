@@ -1,0 +1,25 @@
+# Supply-chain hardening (moved from .npmrc: pnpm 11 only reads auth/registry settings there)
+
+# Only these packages may run install scripts (native prebuilds / binaries).
+allowBuilds:
+  canvas: true
+  esbuild: true
+
+# Only install versions published at least 7 days ago (minutes).
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # typescript is published by Microsoft (trusted). TS 7 is the native compiler,
+  # so its @typescript/* platform binaries need exempting too.
+  - typescript
+  - '@typescript/*'
+  # ink-uplot and glassnode-api are published by the repo author (trusted).
+  - ink-uplot
+  - glassnode-api
+  # @x402/* (Coinbase's official x402 packages, incl. transitive @x402/core) —
+  # glassnode-api's x402 needs ^2.18.0 to complete x402Version-2 payments.
+  - '@x402/*'
+
+# Security floors for transitive dev deps (vitest > vite > postcss > nanoid).
+overrides:
+  postcss: ^8.5.23
+  nanoid@3: ^3.3.18
