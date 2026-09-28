@@ -25,8 +25,8 @@ importers:
         specifier: ^0.3.3
         version: 0.3.3
       glassnode-api:
-        specifier: ^0.8.2
-        version: 0.8.2(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5))
+        specifier: ^0.29.3
+        version: 0.29.3(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5))
       ink:
         specifier: ^7.1.1
         version: 7.1.1(@types/react@19.3.0)(react@19.3.0)
@@ -722,8 +722,8 @@ packages:
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
-  glassnode-api@0.8.2:
-    resolution: {integrity: sha512-bCzgUVKFV3xlN946NzuTy0AE5UINOMOYdII0q/NdCET8iiKKRdMT5R0HDPqFPzDavJW98cdndmIbcMH/mBy7og==}
+  glassnode-api@0.29.3:
+    resolution: {integrity: sha512-oCLTVHddtKxc8Ow4muf2ELOk72ibF4QNLypxtpCmlWfOkAvyekd8jRI23N8dkWECofxhn+aj6ocCaMWHBkbfkQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       '@x402/evm': ^2.18.0
@@ -1697,7 +1697,7 @@ snapshots:
 
   github-from-package@0.0.0: {}
 
-  glassnode-api@0.8.2(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5)):
+  glassnode-api@0.29.3(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5)):
     dependencies:
       zod: 4.6.5
     optionalDependencies:

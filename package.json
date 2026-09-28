@@ -65,7 +65,7 @@
     "@x402/fetch": "2.26.0",
     "canvas": "^3.2.3",
     "chafa-wasm": "^0.3.3",
-    "glassnode-api": "^0.8.2",
+    "glassnode-api": "^0.29.3",
     "ink": "^7.1.1",
     "ink-spinner": "^5.0.0",
     "ink-uplot": "^0.2.13",
