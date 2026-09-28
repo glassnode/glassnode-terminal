@@ -113,4 +113,4 @@ GLASSNODE_API_KEY=your-key pnpm start
 
 ## License
 
-MIT
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.
