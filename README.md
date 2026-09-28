@@ -8,7 +8,7 @@ Interactive terminal UI for exploring [Glassnode](https://glassnode.com) on-chai
 npm install -g glassnode-terminal
 ```
 
-> **Note:** Requires Node.js >= 24 and system dependencies for [node-canvas](https://github.com/Automattic/node-canvas#compiling). On macOS: `brew install pkg-config cairo pango`.
+> **Note:** Requires Node.js >= 22 and system dependencies for [node-canvas](https://github.com/Automattic/node-canvas#compiling). On macOS: `brew install pkg-config cairo pango`.
 
 ## Quick Start
 
