@@ -18,8 +18,8 @@ async function fetchAllMetricMetadata(
   metricPaths: string[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<Record<string, MetricMetadata>> {
-  // Batches of 10 plus the startup client's extra retries keep rate-limited (429) calls
-  // near zero; measured: 2 retries/batch 20 lost ~296 of 1,817, 5 retries/batch 10 ~10.
+  // Batches of 10 plus the startup client's rate-limit-aware retries keep lost (429) calls
+  // near zero; measured: 2 retries/batch 20 lost ~296 of 1,817.
   const client = createStartupClient();
   const result: Record<string, MetricMetadata> = {};
 
@@ -68,6 +68,15 @@ export function sortAssetsByMcap(
   });
 }
 
+/**
+ * Metrics to list: everything except point-in-time (`_pit`) variants. Checks the path suffix
+ * as well as `is_pit`, so a variant whose metadata failed to load (e.g. rate-limited) is still
+ * hidden; every `is_pit` metric's path ends in `_pit` and no other does.
+ */
+export function listedMetrics(paths: string[], metadata: Record<string, MetricMetadata>): string[] {
+  return paths.filter((p) => !(metadata[p]?.is_pit || p.endsWith('_pit')));
+}
+
 /** Turn catalog entries into the metrics list + a metadata map buildMetricList understands. */
 function catalogToStartupParts(entries: readonly X402CatalogEntry[]): {
   metrics: string[];
@@ -96,7 +105,9 @@ export async function loadStartupData(
   onProgress?: (message: string) => void,
 ): Promise<StartupData> {
   // Cache is per-mode: x402 shows only the ~326 advanced metrics, API mode shows all.
-  const cacheKey = isX402Enabled() ? 'startup-data-x402' : 'startup-data';
+  // v2: glassnode-api 1.0 + rate-limit-aware metadata fetch — don't reuse a day-old cache
+  // that lost metadata to rate limits (missing names, leaked _pit metrics).
+  const cacheKey = isX402Enabled() ? 'startup-data-x402' : 'startup-data-v2';
 
   const cached = readCache<StartupData>(cacheKey);
   if (cached) {
@@ -134,8 +145,7 @@ async function loadStartupDataApi(
     onProgress?.(`Fetching metric metadata... ${done}/${total}`);
   });
 
-  const filteredMetrics = metricPaths.filter((p) => !metricMetadataMap[p]?.is_pit);
-  return { assets: sortedAssets, metrics: filteredMetrics, metricMetadataMap };
+  return { assets: sortedAssets, metrics: listedMetrics(metricPaths, metricMetadataMap), metricMetadataMap };
 }
 
 /**

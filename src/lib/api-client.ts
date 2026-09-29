@@ -11,6 +11,7 @@ let clientInstance: GlassnodeAPI | null = null;
 // API-key mode only: see createStartupClient().
 let startupClientInstance: GlassnodeAPI | null = null;
 const STARTUP_MAX_RETRIES = 5;
+const STARTUP_MAX_RETRY_DELAY_MS = 60_000; // the API's rate-limit window
 let x402Enabled = false;
 let x402FetchStore: typeof globalThis.fetch | null = null;
 let x402BaseUrl = 'https://x402.glassnode.com';
@@ -69,6 +70,23 @@ const userAgentFetch: typeof globalThis.fetch = (input, init) => {
   req.headers.set('User-Agent', USER_AGENT);
   return globalThis.fetch(req);
 };
+
+/**
+ * The API's 429s carry `x-rate-limit-reset` (seconds until the per-minute window resets)
+ * but no `Retry-After`, so glassnode-api falls back to short jittered backoff and can give
+ * up before the window resets. Expose the reset as `Retry-After`, which glassnode-api honours
+ * (capped at `maxRetryDelay`), so a retry waits for the new window.
+ */
+export function rateLimitAwareFetch(inner: typeof globalThis.fetch): typeof globalThis.fetch {
+  return async (input, init) => {
+    const res = await inner(input, init);
+    const reset = res.headers.get('x-rate-limit-reset');
+    if (res.status !== 429 || res.headers.has('retry-after') || !reset || !/^\d+$/.test(reset)) return res;
+    const headers = new Headers(res.headers);
+    headers.set('retry-after', reset);
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  };
+}
 
 /**
  * Initialize the shared GlassnodeAPI client. Must be awaited once at startup,
@@ -134,7 +152,13 @@ export async function initClient(): Promise<GlassnodeAPI> {
   }
 
   clientInstance = new GlassnodeAPI({ apiKey, fetch: userAgentFetch, logger });
-  startupClientInstance = new GlassnodeAPI({ apiKey, fetch: userAgentFetch, logger, maxRetries: STARTUP_MAX_RETRIES });
+  startupClientInstance = new GlassnodeAPI({
+    apiKey,
+    fetch: rateLimitAwareFetch(userAgentFetch),
+    logger,
+    maxRetries: STARTUP_MAX_RETRIES,
+    maxRetryDelay: STARTUP_MAX_RETRY_DELAY_MS,
+  });
   log('info', 'API-key mode enabled');
   return clientInstance;
 }
@@ -151,11 +175,12 @@ export function createClient(): GlassnodeAPI {
 }
 
 /**
- * Client for the startup metadata burst (~1,800 calls). The API rate-limits part of it
- * (429); with glassnode-api's default 2 retries ~16% of the metadata was lost, with 5
- * (backoff honours Retry-After) nearly none. Interactive calls keep the default so a rate
- * limit doesn't stall the UI. x402 mode has no separate client: retrying a paid call could
- * pay twice, so it stays at 0 retries.
+ * Client for the startup metadata burst (~1,800 calls against a 1,200/minute limit). With
+ * glassnode-api's default 2 short retries ~16% of the metadata was rate-limited (429) and
+ * lost. This client retries up to 5 times and, via rateLimitAwareFetch, waits for the
+ * rate-limit window to reset. Interactive calls keep the default so a rate limit doesn't
+ * stall the UI. x402 mode has no separate client: retrying a paid call could pay twice,
+ * so it stays at 0 retries.
  */
 export function createStartupClient(): GlassnodeAPI {
   return startupClientInstance ?? createClient();
