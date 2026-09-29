@@ -27,7 +27,9 @@ if (!hasApiKey && !hasX402) {
   try {
     // Build the client up front (x402 setup is async) so hooks can use it synchronously.
     await initClient();
-    render(<App />, { exitOnCtrlC: true });
+    // Incremental rendering rewrites only changed lines, so live updates (price ticker)
+    // don't repaint the rows under an inline-image chart and erase it.
+    render(<App />, { exitOnCtrlC: true, incrementalRendering: true });
   } catch (err) {
     fail(`Error initializing Glassnode client: ${err instanceof Error ? err.message : String(err)}`);
   }

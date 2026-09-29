@@ -148,6 +148,7 @@ vi.mock('../../src/lib/api-client.js', () => ({
 
 vi.mock('ink-uplot', () => ({
   InkUPlot: () => null,
+  detectFormat: () => 'symbols',
 }));
 
 // Helper: wait for async renders to settle

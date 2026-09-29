@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Box, Text } from 'ink';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Text, measureElement, type DOMElement } from 'ink';
 import { InkUPlot } from 'ink-uplot';
 import type { DataPoint, MetricParams } from '../lib/types.js';
 import { formatDate, formatValue, padRight } from '../lib/format.js';
@@ -21,8 +21,10 @@ interface DataViewProps {
   viewMode: DataViewMode;
   showPrice: boolean;
   priceData: DataPoint[];
-  chartWidth: number;
-  chartHeight: number;
+  /** Changing this re-draws the chart (see useRedrawAfterInput). */
+  chartRedrawKey: number;
+  /** Called with the rows available for the table/chart body (sizes the table's page). */
+  onBodyHeightChange?: (height: number) => void;
 }
 
 export function DataView({
@@ -38,10 +40,28 @@ export function DataView({
   viewMode,
   showPrice,
   priceData,
-  chartWidth,
-  chartHeight,
+  chartRedrawKey,
+  onBodyHeightChange,
 }: DataViewProps): React.ReactElement {
   const [start, end] = visibleRange;
+
+  // Measure the space actually left in the pane for the table/chart body (below the param
+  // bar and metric line, which wrap when the pane is narrow). Inline-image charts are drawn
+  // at exactly this size, and the table's page size comes from it (via onBodyHeightChange),
+  // so a guess would spill over the pane border.
+  const bodyRef = useRef<DOMElement>(null);
+  // `measured` distinguishes "not laid out yet" from a real 0 (a pane too short for a body).
+  const [bodyArea, setBodyArea] = useState({ width: 0, height: 0, measured: false });
+  useEffect(() => {
+    if (!bodyRef.current) return;
+    const { width, height } = measureElement(bodyRef.current);
+    if (!bodyArea.measured || width !== bodyArea.width || height !== bodyArea.height) {
+      setBodyArea({ width, height, measured: true });
+    }
+  });
+  useEffect(() => {
+    if (bodyArea.measured) onBodyHeightChange?.(bodyArea.height);
+  }, [bodyArea.measured, bodyArea.height, onBodyHeightChange]);
   const visible = data.slice(start, end);
 
   // Price lookup for table view
@@ -96,7 +116,9 @@ export function DataView({
     }
 
     return { width: 800, height: 400, series, axes };
-  }, [priceMap]);
+    // chartRedrawKey: a new opts object makes InkUPlot re-render and re-stamp an inline
+    // image that an Ink repaint erased.
+  }, [priceMap, chartRedrawKey]);
 
   return (
     <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'}>
@@ -116,57 +138,54 @@ export function DataView({
         </Box>
       )}
 
-      {!loading && !error && data.length > 0 && viewMode === 'table' && (
-        <Box flexDirection="column">
-          <Box paddingX={1} gap={2}>
-            <Text bold>{padRight('Date', 16)}</Text>
-            <Text bold>{padRight('Value', 16)}</Text>
-            {priceMap && <Text bold dimColor>Price</Text>}
-          </Box>
-          {visible.map((point, i) => {
-            const globalIndex = start + i;
-            const isSelected = globalIndex === selectedIndex;
-            const value = point.v !== undefined ? point.v : point.o;
-            const price = priceMap?.get(point.t);
-            return (
-              <Box key={point.t} paddingX={1} gap={2}>
-                <Text
-                  color={isSelected ? 'black' : undefined}
-                  backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
-                >
-                  {padRight(formatDate(point.t, params.interval), 16)}
-                </Text>
-                <Text
-                  color={isSelected ? 'black' : undefined}
-                  backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
-                >
-                  {padRight(formatValue(value), 16)}
-                </Text>
-                {priceMap && (
-                  <Text dimColor>
-                    {price != null ? formatValue(price) : '—'}
-                  </Text>
-                )}
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {!loading && !error && data.length > 0 && viewMode === 'chart' && chartData && (
-        <InkUPlot
-          opts={chartOpts}
-          data={chartData}
-          width={Math.max(20, chartWidth)}
-          height={Math.max(5, chartHeight)}
-        />
-      )}
-
       {!loading && !error && data.length === 0 && selectedMetric && selectedAsset && (
         <Box paddingX={1}>
           <Text dimColor>No data</Text>
         </Box>
       )}
+
+      <Box ref={bodyRef} flexDirection="column" flexGrow={1} flexShrink={1} flexBasis={0} overflow="hidden">
+        {!loading && !error && data.length > 0 && viewMode === 'table' && (
+          <Box flexDirection="column">
+            <Box paddingX={1} gap={2}>
+              <Text bold>{padRight('Date', 16)}</Text>
+              <Text bold>{padRight('Value', 16)}</Text>
+              {priceMap && <Text bold dimColor>Price</Text>}
+            </Box>
+            {visible.map((point, i) => {
+              const globalIndex = start + i;
+              const isSelected = globalIndex === selectedIndex;
+              const value = point.v !== undefined ? point.v : point.o;
+              const price = priceMap?.get(point.t);
+              return (
+                <Box key={point.t} paddingX={1} gap={2}>
+                  <Text
+                    color={isSelected ? 'black' : undefined}
+                    backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
+                  >
+                    {padRight(formatDate(point.t, params.interval), 16)}
+                  </Text>
+                  <Text
+                    color={isSelected ? 'black' : undefined}
+                    backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
+                  >
+                    {padRight(formatValue(value), 16)}
+                  </Text>
+                  {priceMap && (
+                    <Text dimColor>
+                      {price != null ? formatValue(price) : '—'}
+                    </Text>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+
+        {!loading && !error && data.length > 0 && viewMode === 'chart' && chartData && bodyArea.width > 0 && bodyArea.height > 0 && (
+          <InkUPlot opts={chartOpts} data={chartData} width={bodyArea.width} height={bodyArea.height} />
+        )}
+      </Box>
     </Box>
   );
 }
