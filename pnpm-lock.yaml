@@ -34,8 +34,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       ink-uplot:
-        specifier: ^0.2.13
-        version: 0.2.13(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32)
+        specifier: ^0.2.14
+        version: 0.2.14(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32)
       path2d:
         specifier: ^0.3.4
         version: 0.3.4
@@ -766,8 +766,8 @@ packages:
       '@types/react':
         optional: true
 
-  ink-uplot@0.2.13:
-    resolution: {integrity: sha512-zXO16Ipy3+aTHKPadkaJBk4g6TVl2lD8uP71Rizr9WN3fcHHnses45NGnvvp2dt5Y/QLSKjt9wxF+5RXnAcEAQ==}
+  ink-uplot@0.2.14:
+    resolution: {integrity: sha512-r47jr20kJc0H41+BBN6ftBT6tH5mVK8LLxNKSY2w/9ZNUE7KLrPOyMCLG4j0rpF/hPtzAcwTvlzvezWmiK4ePw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       ink: '>=4.0.0'
@@ -1723,7 +1723,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  ink-uplot@0.2.13(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32):
+  ink-uplot@0.2.14(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32):
     dependencies:
       canvas: 3.2.3
       chafa-wasm: 0.3.3

@@ -23,6 +23,8 @@ interface DataViewProps {
   priceData: DataPoint[];
   /** Changing this re-draws the chart (see useRedrawAfterInput). */
   chartRedrawKey: number;
+  /** Called with the rows available for the table/chart body (sizes the table's page). */
+  onBodyHeightChange?: (height: number) => void;
 }
 
 export function DataView({
@@ -39,19 +41,24 @@ export function DataView({
   showPrice,
   priceData,
   chartRedrawKey,
+  onBodyHeightChange,
 }: DataViewProps): React.ReactElement {
   const [start, end] = visibleRange;
 
-  // Size the chart to the space actually left in the pane (below the param bar and
-  // metric line, which wrap when the pane is narrow). Inline-image charts are drawn
-  // at exactly this size, so a guess would spill over the pane border.
-  const chartAreaRef = useRef<DOMElement>(null);
-  const [chartArea, setChartArea] = useState({ width: 0, height: 0 });
+  // Measure the space actually left in the pane for the table/chart body (below the param
+  // bar and metric line, which wrap when the pane is narrow). Inline-image charts are drawn
+  // at exactly this size, and the table's page size comes from it (via onBodyHeightChange),
+  // so a guess would spill over the pane border.
+  const bodyRef = useRef<DOMElement>(null);
+  const [bodyArea, setBodyArea] = useState({ width: 0, height: 0 });
   useEffect(() => {
-    if (!chartAreaRef.current) return;
-    const { width, height } = measureElement(chartAreaRef.current);
-    if (width !== chartArea.width || height !== chartArea.height) setChartArea({ width, height });
+    if (!bodyRef.current) return;
+    const { width, height } = measureElement(bodyRef.current);
+    if (width !== bodyArea.width || height !== bodyArea.height) setBodyArea({ width, height });
   });
+  useEffect(() => {
+    if (bodyArea.height > 0) onBodyHeightChange?.(bodyArea.height);
+  }, [bodyArea.height, onBodyHeightChange]);
   const visible = data.slice(start, end);
 
   // Price lookup for table view
@@ -128,56 +135,54 @@ export function DataView({
         </Box>
       )}
 
-      {!loading && !error && data.length > 0 && viewMode === 'table' && (
-        <Box flexDirection="column">
-          <Box paddingX={1} gap={2}>
-            <Text bold>{padRight('Date', 16)}</Text>
-            <Text bold>{padRight('Value', 16)}</Text>
-            {priceMap && <Text bold dimColor>Price</Text>}
-          </Box>
-          {visible.map((point, i) => {
-            const globalIndex = start + i;
-            const isSelected = globalIndex === selectedIndex;
-            const value = point.v !== undefined ? point.v : point.o;
-            const price = priceMap?.get(point.t);
-            return (
-              <Box key={point.t} paddingX={1} gap={2}>
-                <Text
-                  color={isSelected ? 'black' : undefined}
-                  backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
-                >
-                  {padRight(formatDate(point.t, params.interval), 16)}
-                </Text>
-                <Text
-                  color={isSelected ? 'black' : undefined}
-                  backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
-                >
-                  {padRight(formatValue(value), 16)}
-                </Text>
-                {priceMap && (
-                  <Text dimColor>
-                    {price != null ? formatValue(price) : '—'}
-                  </Text>
-                )}
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
       {!loading && !error && data.length === 0 && selectedMetric && selectedAsset && (
         <Box paddingX={1}>
           <Text dimColor>No data</Text>
         </Box>
       )}
 
-      {viewMode === 'chart' && (
-        <Box ref={chartAreaRef} flexGrow={1} flexShrink={1} overflow="hidden">
-          {!loading && !error && data.length > 0 && chartData && chartArea.width > 0 && chartArea.height > 0 && (
-            <InkUPlot opts={chartOpts} data={chartData} width={chartArea.width} height={chartArea.height} />
-          )}
-        </Box>
-      )}
+      <Box ref={bodyRef} flexDirection="column" flexGrow={1} flexShrink={1} flexBasis={0} overflow="hidden">
+        {!loading && !error && data.length > 0 && viewMode === 'table' && (
+          <Box flexDirection="column">
+            <Box paddingX={1} gap={2}>
+              <Text bold>{padRight('Date', 16)}</Text>
+              <Text bold>{padRight('Value', 16)}</Text>
+              {priceMap && <Text bold dimColor>Price</Text>}
+            </Box>
+            {visible.map((point, i) => {
+              const globalIndex = start + i;
+              const isSelected = globalIndex === selectedIndex;
+              const value = point.v !== undefined ? point.v : point.o;
+              const price = priceMap?.get(point.t);
+              return (
+                <Box key={point.t} paddingX={1} gap={2}>
+                  <Text
+                    color={isSelected ? 'black' : undefined}
+                    backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
+                  >
+                    {padRight(formatDate(point.t, params.interval), 16)}
+                  </Text>
+                  <Text
+                    color={isSelected ? 'black' : undefined}
+                    backgroundColor={isSelected && isFocused ? 'cyan' : undefined}
+                  >
+                    {padRight(formatValue(value), 16)}
+                  </Text>
+                  {priceMap && (
+                    <Text dimColor>
+                      {price != null ? formatValue(price) : '—'}
+                    </Text>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+
+        {!loading && !error && data.length > 0 && viewMode === 'chart' && chartData && bodyArea.width > 0 && bodyArea.height > 0 && (
+          <InkUPlot opts={chartOpts} data={chartData} width={bodyArea.width} height={bodyArea.height} />
+        )}
+      </Box>
     </Box>
   );
 }

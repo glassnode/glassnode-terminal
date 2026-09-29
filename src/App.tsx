@@ -326,7 +326,11 @@ export function App(): React.ReactElement {
     params,
     showPrice,
   );
-  const dataNavReal = useListNavigation({ itemCount: data.length, viewportSize });
+  // Table page size = rows DataView measured for its body, minus the table header row.
+  // Until the first measurement, assume the pane's param bar, metric line and header.
+  const [dataBodyHeight, setDataBodyHeight] = useState(0);
+  const dataPageSize = dataBodyHeight > 1 ? dataBodyHeight - 1 : Math.max(1, viewportSize - 3);
+  const dataNavReal = useListNavigation({ itemCount: data.length, viewportSize: dataPageSize });
 
   // Pane switching
   const nextPane = useCallback(() => {
@@ -573,6 +577,7 @@ export function App(): React.ReactElement {
             showPrice={showPrice}
             priceData={priceData}
             chartRedrawKey={chartRedrawKey}
+            onBodyHeightChange={setDataBodyHeight}
           />
         )}
       </Box>

@@ -18,27 +18,34 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function renderDataView(paneWidth: number, paneHeight: number) {
+function renderDataView(
+  paneWidth: number,
+  paneHeight: number,
+  { viewMode = 'chart', points = 2, onBodyHeightChange }: {
+    viewMode?: 'chart' | 'table';
+    points?: number;
+    onBodyHeightChange?: (height: number) => void;
+  } = {},
+) {
   chartSizes.length = 0;
+  const data = Array.from({ length: points }, (_, i) => ({ t: 86400 * (i + 1), v: i + 1 }));
   return render(
     <Box width={paneWidth} height={paneHeight}>
       <DataView
-        data={[
-          { t: 1, v: 1 },
-          { t: 2, v: 2 },
-        ]}
+        data={data}
         loading={false}
         error={null}
         params={{ interval: '24h', since: '30d', currency: 'usd' }}
         selectedMetric="/addresses/count"
         selectedAsset="BTC"
         isFocused={false}
-        visibleRange={[0, 2]}
+        visibleRange={[0, points]}
         selectedIndex={0}
-        viewMode="chart"
+        viewMode={viewMode}
         showPrice={false}
         priceData={[]}
         chartRedrawKey={0}
+        onBodyHeightChange={onBodyHeightChange}
       />
     </Box>,
   );
@@ -61,5 +68,26 @@ describe('DataView chart sizing', () => {
     expect(size.width).toBe(32);
     expect(size.height).toBeLessThan(16);
     expect(size.height).toBeGreaterThan(0);
+  });
+});
+
+describe('DataView table sizing', () => {
+  it('reports the rows available below the param bar and metric line', async () => {
+    const heights: number[] = [];
+    renderDataView(80, 20, { viewMode: 'table', points: 50, onBodyHeightChange: (h) => heights.push(h) });
+    await delay(50);
+    // 20 - border (2) - param bar (1) - metric line (1) = 16 rows (table header + 15 data rows).
+    expect(heights.at(-1)).toBe(16);
+  });
+
+  it('never draws past the pane border, even when given more rows than fit', async () => {
+    const { lastFrame } = renderDataView(80, 20, { viewMode: 'table', points: 50 });
+    await delay(50);
+    const lines = (lastFrame() ?? '').split('\n');
+    expect(lines).toHaveLength(20);
+    expect(lines.at(-1)).toMatch(/^└─+┘$/);
+    // The param bar and metric line aren't squeezed out by the long table.
+    expect(lines[1]).toContain('[i]');
+    expect(lines[2]).toContain('/addresses/count');
   });
 });
