@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Box, Text } from 'ink';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Text, measureElement, type DOMElement } from 'ink';
 import { InkUPlot } from 'ink-uplot';
 import type { DataPoint, MetricParams } from '../lib/types.js';
 import { formatDate, formatValue, padRight } from '../lib/format.js';
@@ -21,8 +21,6 @@ interface DataViewProps {
   viewMode: DataViewMode;
   showPrice: boolean;
   priceData: DataPoint[];
-  chartWidth: number;
-  chartHeight: number;
   /** Changing this re-draws the chart (see useRedrawAfterInput). */
   chartRedrawKey: number;
 }
@@ -40,11 +38,20 @@ export function DataView({
   viewMode,
   showPrice,
   priceData,
-  chartWidth,
-  chartHeight,
   chartRedrawKey,
 }: DataViewProps): React.ReactElement {
   const [start, end] = visibleRange;
+
+  // Size the chart to the space actually left in the pane (below the param bar and
+  // metric line, which wrap when the pane is narrow). Inline-image charts are drawn
+  // at exactly this size, so a guess would spill over the pane border.
+  const chartAreaRef = useRef<DOMElement>(null);
+  const [chartArea, setChartArea] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    if (!chartAreaRef.current) return;
+    const { width, height } = measureElement(chartAreaRef.current);
+    if (width !== chartArea.width || height !== chartArea.height) setChartArea({ width, height });
+  });
   const visible = data.slice(start, end);
 
   // Price lookup for table view
@@ -158,18 +165,17 @@ export function DataView({
         </Box>
       )}
 
-      {!loading && !error && data.length > 0 && viewMode === 'chart' && chartData && (
-        <InkUPlot
-          opts={chartOpts}
-          data={chartData}
-          width={Math.max(20, chartWidth)}
-          height={Math.max(5, chartHeight)}
-        />
-      )}
-
       {!loading && !error && data.length === 0 && selectedMetric && selectedAsset && (
         <Box paddingX={1}>
           <Text dimColor>No data</Text>
+        </Box>
+      )}
+
+      {viewMode === 'chart' && (
+        <Box ref={chartAreaRef} flexGrow={1} flexShrink={1} overflow="hidden">
+          {!loading && !error && data.length > 0 && chartData && chartArea.width > 0 && chartArea.height > 0 && (
+            <InkUPlot opts={chartOpts} data={chartData} width={chartArea.width} height={chartArea.height} />
+          )}
         </Box>
       )}
     </Box>

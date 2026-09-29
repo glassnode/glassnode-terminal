@@ -34,7 +34,8 @@ function cycleNext<T>(arr: readonly T[], current: T): T {
 export function App(): React.ReactElement {
   const { stdout } = useStdout();
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
-  const [termWidth, setTermWidth] = useState(stdout?.columns ?? 80);
+  // Not read directly: updating it re-renders on width-only resizes so DataView re-measures the chart.
+  const [, setTermWidth] = useState(stdout?.columns ?? 80);
 
   useEffect(() => {
     if (!stdout) return;
@@ -571,8 +572,6 @@ export function App(): React.ReactElement {
             viewMode={dataViewMode}
             showPrice={showPrice}
             priceData={priceData}
-            chartWidth={Math.max(20, termWidth - 30 - 50 - 6)}
-            chartHeight={viewportSize}
             chartRedrawKey={chartRedrawKey}
           />
         )}
