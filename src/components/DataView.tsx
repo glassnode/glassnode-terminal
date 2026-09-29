@@ -23,6 +23,8 @@ interface DataViewProps {
   priceData: DataPoint[];
   chartWidth: number;
   chartHeight: number;
+  /** Changing this re-draws the chart (see useRedrawAfterInput). */
+  chartRedrawKey: number;
 }
 
 export function DataView({
@@ -40,6 +42,7 @@ export function DataView({
   priceData,
   chartWidth,
   chartHeight,
+  chartRedrawKey,
 }: DataViewProps): React.ReactElement {
   const [start, end] = visibleRange;
   const visible = data.slice(start, end);
@@ -96,7 +99,9 @@ export function DataView({
     }
 
     return { width: 800, height: 400, series, axes };
-  }, [priceMap]);
+    // chartRedrawKey: a new opts object makes InkUPlot re-render and re-stamp an inline
+    // image that an Ink repaint erased.
+  }, [priceMap, chartRedrawKey]);
 
   return (
     <Box flexDirection="column" flexGrow={2} borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'}>

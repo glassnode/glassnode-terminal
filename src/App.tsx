@@ -12,6 +12,7 @@ import { LogView } from './components/LogView.js';
 import { PriceTicker } from './components/PriceTicker.js';
 import { Spinner } from './components/Spinner.js';
 import { usePulses, getTickerAssets } from './hooks/usePulses.js';
+import { useRedrawAfterInput } from './hooks/useRedrawAfterInput.js';
 import { loadStartupData, buildMetricList } from './lib/startup-data.js';
 import {
   Pane,
@@ -80,6 +81,7 @@ export function App(): React.ReactElement {
   const [dataViewMode, setDataViewMode] = useState<DataViewMode>('chart');
   const [showPrice, setShowPrice] = useState(true);
   const [showLogs, setShowLogs] = useState(false);
+  const chartRedrawKey = useRedrawAfterInput();
   const [leftSearchQuery, setLeftSearchQuery] = useState('');
   const [middleSearchQuery, setMiddleSearchQuery] = useState('');
   const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
@@ -571,6 +573,7 @@ export function App(): React.ReactElement {
             priceData={priceData}
             chartWidth={Math.max(20, termWidth - 30 - 50 - 6)}
             chartHeight={viewportSize}
+            chartRedrawKey={chartRedrawKey}
           />
         )}
       </Box>
