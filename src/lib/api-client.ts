@@ -8,6 +8,9 @@ const { version } = require('../../package.json') as { version: string };
 export const USER_AGENT = `glassnode-terminal-${version}`;
 
 let clientInstance: GlassnodeAPI | null = null;
+// API-key mode only: see createStartupClient().
+let startupClientInstance: GlassnodeAPI | null = null;
+const STARTUP_MAX_RETRIES = 5;
 let x402Enabled = false;
 let x402FetchStore: typeof globalThis.fetch | null = null;
 let x402BaseUrl = 'https://x402.glassnode.com';
@@ -131,6 +134,7 @@ export async function initClient(): Promise<GlassnodeAPI> {
   }
 
   clientInstance = new GlassnodeAPI({ apiKey, fetch: userAgentFetch, logger });
+  startupClientInstance = new GlassnodeAPI({ apiKey, fetch: userAgentFetch, logger, maxRetries: STARTUP_MAX_RETRIES });
   log('info', 'API-key mode enabled');
   return clientInstance;
 }
@@ -144,4 +148,15 @@ export function createClient(): GlassnodeAPI {
     throw new Error('GlassnodeAPI client not initialized — call initClient() at startup.');
   }
   return clientInstance;
+}
+
+/**
+ * Client for the startup metadata burst (~1,800 calls). The API rate-limits part of it
+ * (429); with glassnode-api's default 2 retries ~16% of the metadata was lost, with 5
+ * (backoff honours Retry-After) nearly none. Interactive calls keep the default so a rate
+ * limit doesn't stall the UI. x402 mode has no separate client: retrying a paid call could
+ * pay twice, so it stays at 0 retries.
+ */
+export function createStartupClient(): GlassnodeAPI {
+  return startupClientInstance ?? createClient();
 }

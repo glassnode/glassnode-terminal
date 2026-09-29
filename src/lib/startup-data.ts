@@ -1,5 +1,5 @@
 import type { AssetMetadata, MetricMetadata } from 'glassnode-api';
-import { createClient, isX402Enabled, fetchX402AdvancedPaths } from './api-client.js';
+import { createClient, createStartupClient, isX402Enabled, fetchX402AdvancedPaths } from './api-client.js';
 import { readCache, writeCache } from './cache.js';
 import type { MetricListItem } from './types.js';
 import { X402_CATALOG, X402_ASSET_SETS, X402_ASSETS, type X402CatalogEntry } from './x402-catalog.js';
@@ -11,14 +11,16 @@ export interface StartupData {
   metricMetadataMap: Record<string, MetricMetadata>;
 }
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 100;
 
 async function fetchAllMetricMetadata(
   metricPaths: string[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<Record<string, MetricMetadata>> {
-  const client = createClient();
+  // Batches of 10 plus the startup client's extra retries keep rate-limited (429) calls
+  // near zero; measured: 2 retries/batch 20 lost ~296 of 1,817, 5 retries/batch 10 ~10.
+  const client = createStartupClient();
   const result: Record<string, MetricMetadata> = {};
 
   for (let i = 0; i < metricPaths.length; i += BATCH_SIZE) {
@@ -46,15 +48,16 @@ async function fetchAllMetricMetadata(
 }
 
 /** Sort assets by descending market cap, then symbol. */
-function sortAssetsByMcap(
+export function sortAssetsByMcap(
   assetData: AssetMetadata[],
-  mcapData: Array<{ bulk: Array<{ a: string; v: number }> }>,
+  // v is null for an asset with no value at that time (glassnode-api >= 0.30).
+  mcapData: Array<{ bulk: Array<{ a: string; v: number | null }> }>,
 ): AssetMetadata[] {
   const mcapBySymbol = new Map<string, number>();
   if (mcapData.length > 0) {
     const latest = mcapData[mcapData.length - 1]!;
     for (const entry of latest.bulk) {
-      mcapBySymbol.set(entry.a.toUpperCase(), entry.v);
+      if (entry.v !== null) mcapBySymbol.set(entry.a.toUpperCase(), entry.v);
     }
   }
   return [...assetData].sort((a, b) => {
