@@ -1,0 +1,51 @@
+name: Publish
+# Publish to npm when a version tag (vX.Y.Z) is pushed, then cut a GitHub Release.
+# Uses npm Trusted Publishing (OIDC): requires a Trusted Publisher configured for the
+# glassnode-terminal package on npmjs.com (repo planadecu/glassnode-terminal, workflow
+# publish.yml). No npm token is stored in the repo. npm attaches provenance automatically.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # npm OIDC trusted publishing + provenance
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+          # Needed so npm knows the registry for the OIDC exchange.
+          registry-url: 'https://registry.npmjs.org'
+      - name: Check the tag matches package.json
+        run: |
+          VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $VERSION" >&2
+            exit 1
+          fi
+      # pnpm-workspace.yaml enforces the build allowlist and the 7-day release-age cooldown.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      # setup-node's registry-url writes an .npmrc with a placeholder _authToken, which
+      # makes npm send it instead of doing the OIDC exchange (E404). Keep only the registry.
+      - name: Let npm authenticate via OIDC
+        run: printf 'registry=https://registry.npmjs.org/\n' > "$NPM_CONFIG_USERCONFIG"
+      # Trusted publishing needs npm >= 11.5.1 (pnpm publish does not do the OIDC exchange).
+      # prepublishOnly cleans dist/ and builds.
+      - run: npm install -g npm@latest
+      - run: npm publish
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
