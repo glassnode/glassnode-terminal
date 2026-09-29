@@ -56,6 +56,17 @@ export function useListNavigation({ itemCount, viewportSize, isSelectable }: Lis
     }
   }, [itemCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // When the viewport changes size (terminal resize, a pane header wrapping), keep the
+  // selection visible and don't leave empty rows past the end of the list.
+  useEffect(() => {
+    setScrollOffset((prev) => {
+      let next = prev;
+      if (selectedIndex >= next + viewportSize) next = selectedIndex - viewportSize + 1;
+      if (selectedIndex < next) next = selectedIndex;
+      return Math.max(0, Math.min(next, Math.max(0, itemCount - viewportSize)));
+    });
+  }, [viewportSize]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const findSelectable = useCallback(
     (from: number, direction: 1 | -1): number => {
       if (!isSelectable) return from;
