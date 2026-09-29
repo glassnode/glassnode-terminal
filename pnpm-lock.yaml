@@ -25,8 +25,8 @@ importers:
         specifier: ^0.3.3
         version: 0.3.3
       glassnode-api:
-        specifier: ^0.29.3
-        version: 0.29.3(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5))
+        specifier: ^1.0.0
+        version: 1.0.0(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5))
       ink:
         specifier: ^7.1.1
         version: 7.1.1(@types/react@19.3.0)(react@19.3.0)
@@ -34,8 +34,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       ink-uplot:
-        specifier: ^0.2.15
-        version: 0.2.15(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32)
+        specifier: ^0.2.16
+        version: 0.2.16(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32)
       path2d:
         specifier: ^0.3.4
         version: 0.3.4
@@ -722,9 +722,9 @@ packages:
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
-  glassnode-api@0.29.3:
-    resolution: {integrity: sha512-oCLTVHddtKxc8Ow4muf2ELOk72ibF4QNLypxtpCmlWfOkAvyekd8jRI23N8dkWECofxhn+aj6ocCaMWHBkbfkQ==}
-    engines: {node: '>=18.0.0'}
+  glassnode-api@1.0.0:
+    resolution: {integrity: sha512-oZMeZaamV4T1n7hpL6KCyykwU6DZR0kJFtkaXEIbtFTLOK1PBZw6b7lYzgd2Rs0QTBgWYEm1L3CX4LPzW8MsUw==}
+    engines: {node: '>=22.0.0'}
     peerDependencies:
       '@x402/evm': ^2.18.0
       '@x402/fetch': ^2.18.0
@@ -766,8 +766,8 @@ packages:
       '@types/react':
         optional: true
 
-  ink-uplot@0.2.15:
-    resolution: {integrity: sha512-k9rOhV/ryoAdyDZOeXHOCp62ONhdgD1gBMRan9ck/fctHQ9AYr6N8cHecVHdPxEyTQsiFUQj3l2HVxSWUFYE2g==}
+  ink-uplot@0.2.16:
+    resolution: {integrity: sha512-n5ct2/cQZBEOiru/lMpUvYYg7HtPEJenWjrC7Kn/z7IRAG+LF4oLt/LHBdnfHSuSDFbt+wjkz1nYcYggTxwmlg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       ink: '>=4.0.0'
@@ -1697,7 +1697,7 @@ snapshots:
 
   github-from-package@0.0.0: {}
 
-  glassnode-api@0.29.3(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5)):
+  glassnode-api@1.0.0(@x402/evm@2.26.0(typescript@7.0.2))(@x402/fetch@2.26.0)(viem@2.56.8(typescript@7.0.2)(zod@4.6.5)):
     dependencies:
       zod: 4.6.5
     optionalDependencies:
@@ -1723,7 +1723,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  ink-uplot@0.2.15(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32):
+  ink-uplot@0.2.16(ink@7.1.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(uplot@1.6.32):
     dependencies:
       canvas: 3.2.3
       chafa-wasm: 0.3.3
