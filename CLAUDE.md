@@ -36,6 +36,7 @@ Interactive TUI (Terminal User Interface) for Glassnode on-chain crypto data, bu
 - Build the project with `pnpm run build`
 - Run the app with `GLASSNODE_API_KEY=xxx pnpm start` (or `node --env-file=.env dist/cli.js [--api|--x402]`)
 - `glassnode-api` comes from npm; it is maintained by the repo author and exempt from the release-age cooldown
+- Releasing: bump `version` in package.json via a PR, merge, then push a `vX.Y.Z` tag on that commit — `.github/workflows/publish.yml` publishes to npm (trusted publishing, provenance) and creates the GitHub Release
 
 ## Architecture
 
