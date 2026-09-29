@@ -96,4 +96,12 @@ describe('DataView table sizing', () => {
     expect(lines[1]).toContain('[i]');
     expect(lines[2]).toContain('/addresses/count');
   });
+
+  it('reports 0 when the pane has no room left for a body', async () => {
+    const heights: number[] = [];
+    // 4 rows = border (2) + param bar (1) + metric line (1): nothing left.
+    renderDataView(80, 4, { viewMode: 'table', points: 50, onBodyHeightChange: (h) => heights.push(h) });
+    await until(() => heights.length > 0);
+    expect(heights.at(-1)).toBe(0);
+  });
 });

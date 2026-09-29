@@ -13,6 +13,12 @@ import { PriceTicker } from './components/PriceTicker.js';
 import { Spinner } from './components/Spinner.js';
 import { usePulses, getTickerAssets } from './hooks/usePulses.js';
 import { useRedrawAfterInput } from './hooks/useRedrawAfterInput.js';
+import { detectFormat } from 'ink-uplot';
+
+// Inline-image charts (iTerm2 protocol — VS Code, iTerm2 — and sixels) live in the text
+// cells, so Ink repaints after a keypress can erase them. Kitty's graphics layer and text
+// charts survive repaints.
+const CHART_ERASED_BY_REPAINTS = ['iterm2', 'sixels'].includes(detectFormat());
 import { loadStartupData, buildMetricList } from './lib/startup-data.js';
 import {
   Pane,
@@ -82,7 +88,7 @@ export function App(): React.ReactElement {
   const [dataViewMode, setDataViewMode] = useState<DataViewMode>('chart');
   const [showPrice, setShowPrice] = useState(true);
   const [showLogs, setShowLogs] = useState(false);
-  const chartRedrawKey = useRedrawAfterInput();
+  const chartRedrawKey = useRedrawAfterInput(150, CHART_ERASED_BY_REPAINTS && !showLogs && dataViewMode === 'chart');
   const [leftSearchQuery, setLeftSearchQuery] = useState('');
   const [middleSearchQuery, setMiddleSearchQuery] = useState('');
   const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
@@ -328,8 +334,8 @@ export function App(): React.ReactElement {
   );
   // Table page size = rows DataView measured for its body, minus the table header row.
   // Until the first measurement, assume the pane's param bar, metric line and header.
-  const [dataBodyHeight, setDataBodyHeight] = useState(0);
-  const dataPageSize = dataBodyHeight > 1 ? dataBodyHeight - 1 : Math.max(1, viewportSize - 3);
+  const [dataBodyHeight, setDataBodyHeight] = useState<number | null>(null);
+  const dataPageSize = Math.max(1, dataBodyHeight === null ? viewportSize - 3 : dataBodyHeight - 1);
   const dataNavReal = useListNavigation({ itemCount: data.length, viewportSize: dataPageSize });
 
   // Pane switching

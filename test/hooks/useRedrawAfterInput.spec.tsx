@@ -4,8 +4,8 @@ import { Text } from 'ink';
 import { render } from 'ink-testing-library';
 import { useRedrawAfterInput } from '../../src/hooks/useRedrawAfterInput.js';
 
-function Probe({ delayMs }: { delayMs: number }): React.ReactElement {
-  const epoch = useRedrawAfterInput(delayMs);
+function Probe({ delayMs, enabled }: { delayMs: number; enabled?: boolean }): React.ReactElement {
+  const epoch = useRedrawAfterInput(delayMs, enabled);
   return <Text>epoch:{epoch}</Text>;
 }
 
@@ -37,5 +37,13 @@ describe('useRedrawAfterInput', () => {
     // No further bumps while idle.
     await delay(200);
     expect(lastFrame()).toBe('epoch:1');
+  });
+
+  it('never bumps while disabled (no chart shown, or an image format that survives repaints)', async () => {
+    const { lastFrame, stdin } = render(<Probe delayMs={80} enabled={false} />);
+    await delay(20);
+    stdin.write('\t');
+    await delay(200);
+    expect(lastFrame()).toBe('epoch:0');
   });
 });

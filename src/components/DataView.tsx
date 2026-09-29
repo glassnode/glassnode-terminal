@@ -50,15 +50,18 @@ export function DataView({
   // at exactly this size, and the table's page size comes from it (via onBodyHeightChange),
   // so a guess would spill over the pane border.
   const bodyRef = useRef<DOMElement>(null);
-  const [bodyArea, setBodyArea] = useState({ width: 0, height: 0 });
+  // `measured` distinguishes "not laid out yet" from a real 0 (a pane too short for a body).
+  const [bodyArea, setBodyArea] = useState({ width: 0, height: 0, measured: false });
   useEffect(() => {
     if (!bodyRef.current) return;
     const { width, height } = measureElement(bodyRef.current);
-    if (width !== bodyArea.width || height !== bodyArea.height) setBodyArea({ width, height });
+    if (!bodyArea.measured || width !== bodyArea.width || height !== bodyArea.height) {
+      setBodyArea({ width, height, measured: true });
+    }
   });
   useEffect(() => {
-    if (bodyArea.height > 0) onBodyHeightChange?.(bodyArea.height);
-  }, [bodyArea.height, onBodyHeightChange]);
+    if (bodyArea.measured) onBodyHeightChange?.(bodyArea.height);
+  }, [bodyArea.measured, bodyArea.height, onBodyHeightChange]);
   const visible = data.slice(start, end);
 
   // Price lookup for table view
