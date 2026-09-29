@@ -28,7 +28,8 @@
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepublishOnly": "pnpm run build",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "prepublishOnly": "pnpm run clean && pnpm run build",
     "gen:x402-metrics": "node scripts/generate-x402-metrics.mjs"
   },
   "keywords": [
@@ -69,7 +70,7 @@
     "glassnode-api": "^0.29.3",
     "ink": "^7.1.1",
     "ink-spinner": "^5.0.0",
-    "ink-uplot": "^0.2.13",
+    "ink-uplot": "^0.2.15",
     "path2d": "^0.3.4",
     "react": "^19.3.0",
     "uplot": "^1.6.32",

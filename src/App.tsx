@@ -12,6 +12,13 @@ import { LogView } from './components/LogView.js';
 import { PriceTicker } from './components/PriceTicker.js';
 import { Spinner } from './components/Spinner.js';
 import { usePulses, getTickerAssets } from './hooks/usePulses.js';
+import { useRedrawAfterInput } from './hooks/useRedrawAfterInput.js';
+import { detectFormat } from 'ink-uplot';
+
+// Inline-image charts (iTerm2 protocol — VS Code, iTerm2 — and sixels) live in the text
+// cells, so Ink repaints after a keypress can erase them. Kitty's graphics layer and text
+// charts survive repaints.
+const CHART_ERASED_BY_REPAINTS = ['iterm2', 'sixels'].includes(detectFormat());
 import { loadStartupData, buildMetricList } from './lib/startup-data.js';
 import {
   Pane,
@@ -33,7 +40,8 @@ function cycleNext<T>(arr: readonly T[], current: T): T {
 export function App(): React.ReactElement {
   const { stdout } = useStdout();
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
-  const [termWidth, setTermWidth] = useState(stdout?.columns ?? 80);
+  // Not read directly: updating it re-renders on width-only resizes so DataView re-measures the chart.
+  const [, setTermWidth] = useState(stdout?.columns ?? 80);
 
   useEffect(() => {
     if (!stdout) return;
@@ -80,6 +88,7 @@ export function App(): React.ReactElement {
   const [dataViewMode, setDataViewMode] = useState<DataViewMode>('chart');
   const [showPrice, setShowPrice] = useState(true);
   const [showLogs, setShowLogs] = useState(false);
+  const chartRedrawKey = useRedrawAfterInput(150, CHART_ERASED_BY_REPAINTS && !showLogs && dataViewMode === 'chart');
   const [leftSearchQuery, setLeftSearchQuery] = useState('');
   const [middleSearchQuery, setMiddleSearchQuery] = useState('');
   const activeSearchQuery = activePane === Pane.Left ? leftSearchQuery : middleSearchQuery;
@@ -323,7 +332,11 @@ export function App(): React.ReactElement {
     params,
     showPrice,
   );
-  const dataNavReal = useListNavigation({ itemCount: data.length, viewportSize });
+  // Table page size = rows DataView measured for its body, minus the table header row.
+  // Until the first measurement, assume the pane's param bar, metric line and header.
+  const [dataBodyHeight, setDataBodyHeight] = useState<number | null>(null);
+  const dataPageSize = Math.max(1, dataBodyHeight === null ? viewportSize - 3 : dataBodyHeight - 1);
+  const dataNavReal = useListNavigation({ itemCount: data.length, viewportSize: dataPageSize });
 
   // Pane switching
   const nextPane = useCallback(() => {
@@ -569,8 +582,8 @@ export function App(): React.ReactElement {
             viewMode={dataViewMode}
             showPrice={showPrice}
             priceData={priceData}
-            chartWidth={Math.max(20, termWidth - 30 - 50 - 6)}
-            chartHeight={viewportSize}
+            chartRedrawKey={chartRedrawKey}
+            onBodyHeightChange={setDataBodyHeight}
           />
         )}
       </Box>
