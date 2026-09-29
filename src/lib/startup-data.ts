@@ -1,5 +1,5 @@
 import type { AssetMetadata, MetricMetadata } from 'glassnode-api';
-import { createClient, isX402Enabled, fetchX402AdvancedPaths } from './api-client.js';
+import { createClient, createStartupClient, isX402Enabled, fetchX402AdvancedPaths } from './api-client.js';
 import { readCache, writeCache } from './cache.js';
 import type { MetricListItem } from './types.js';
 import { X402_CATALOG, X402_ASSET_SETS, X402_ASSETS, type X402CatalogEntry } from './x402-catalog.js';
@@ -11,14 +11,16 @@ export interface StartupData {
   metricMetadataMap: Record<string, MetricMetadata>;
 }
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 100;
 
 async function fetchAllMetricMetadata(
   metricPaths: string[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<Record<string, MetricMetadata>> {
-  const client = createClient();
+  // Batches of 10 plus the startup client's rate-limit-aware retries keep lost (429) calls
+  // near zero; measured: 2 retries/batch 20 lost ~296 of 1,817.
+  const client = createStartupClient();
   const result: Record<string, MetricMetadata> = {};
 
   for (let i = 0; i < metricPaths.length; i += BATCH_SIZE) {
@@ -46,15 +48,16 @@ async function fetchAllMetricMetadata(
 }
 
 /** Sort assets by descending market cap, then symbol. */
-function sortAssetsByMcap(
+export function sortAssetsByMcap(
   assetData: AssetMetadata[],
-  mcapData: Array<{ bulk: Array<{ a: string; v: number }> }>,
+  // v is null for an asset with no value at that time (glassnode-api >= 0.30).
+  mcapData: Array<{ bulk: Array<{ a: string; v: number | null }> }>,
 ): AssetMetadata[] {
   const mcapBySymbol = new Map<string, number>();
   if (mcapData.length > 0) {
     const latest = mcapData[mcapData.length - 1]!;
     for (const entry of latest.bulk) {
-      mcapBySymbol.set(entry.a.toUpperCase(), entry.v);
+      if (entry.v !== null) mcapBySymbol.set(entry.a.toUpperCase(), entry.v);
     }
   }
   return [...assetData].sort((a, b) => {
@@ -63,6 +66,15 @@ function sortAssetsByMcap(
     if (mcapA !== mcapB) return mcapB - mcapA;
     return a.symbol.localeCompare(b.symbol);
   });
+}
+
+/**
+ * Metrics to list: everything except point-in-time (`_pit`) variants. Checks the path suffix
+ * as well as `is_pit`, so a variant whose metadata failed to load (e.g. rate-limited) is still
+ * hidden; every `is_pit` metric's path ends in `_pit` and no other does.
+ */
+export function listedMetrics(paths: string[], metadata: Record<string, MetricMetadata>): string[] {
+  return paths.filter((p) => !(metadata[p]?.is_pit || p.endsWith('_pit')));
 }
 
 /** Turn catalog entries into the metrics list + a metadata map buildMetricList understands. */
@@ -93,7 +105,9 @@ export async function loadStartupData(
   onProgress?: (message: string) => void,
 ): Promise<StartupData> {
   // Cache is per-mode: x402 shows only the ~326 advanced metrics, API mode shows all.
-  const cacheKey = isX402Enabled() ? 'startup-data-x402' : 'startup-data';
+  // v2: glassnode-api 1.0 + rate-limit-aware metadata fetch — don't reuse a day-old cache
+  // that lost metadata to rate limits (missing names, leaked _pit metrics).
+  const cacheKey = isX402Enabled() ? 'startup-data-x402' : 'startup-data-v2';
 
   const cached = readCache<StartupData>(cacheKey);
   if (cached) {
@@ -131,8 +145,7 @@ async function loadStartupDataApi(
     onProgress?.(`Fetching metric metadata... ${done}/${total}`);
   });
 
-  const filteredMetrics = metricPaths.filter((p) => !metricMetadataMap[p]?.is_pit);
-  return { assets: sortedAssets, metrics: filteredMetrics, metricMetadataMap };
+  return { assets: sortedAssets, metrics: listedMetrics(metricPaths, metricMetadataMap), metricMetadataMap };
 }
 
 /**
