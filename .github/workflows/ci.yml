@@ -1,15 +1,19 @@
 name: CI
 on:
+  # PRs into main, and into long-lived release branches (release/**).
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches: [main, 'release/**']
+  # publish.yml calls this workflow as its `verify` job, so a release runs exactly the PR checks.
+  workflow_call:
 
 permissions:
   contents: read
 
+# Cancel superseded runs for the same PR (github.ref is refs/pull/<n>/merge, unique per PR). When
+# publish.yml calls this workflow the group is the caller's run (never shared) and nothing is
+# cancelled, so one release's checks can never cancel another's.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('ci-{0}', github.ref) || format('ci-release-{0}', github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -18,15 +22,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 22 = engines.node minimum, 24 = development version.
+        # 22 = engines.node minimum, 24 = development version. The job names ("test (22)",
+        # "test (24)") are the required checks in the repository rulesets.
         node: [22, 24]
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
-      - uses: actions/setup-node@v7
+      # Every action is pinned by full commit SHA (see CLAUDE.md "CI").
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # pnpm's version comes from package.json "packageManager".
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
           cache: 'pnpm'
+      # The top CHANGELOG.md heading must be exactly `## <package.json version>` (publish.yml takes
+      # the GitHub Release notes from that line). Into release/** a `## <x.y.z> (unreleased)`
+      # heading is accepted too. The target is the PR's base branch, or the pushed branch (main)
+      # when publish.yml calls this.
+      - name: Check the CHANGELOG.md heading
+        env:
+          TARGET_BRANCH: ${{ github.base_ref || github.ref_name }}
+        run: node scripts/check-changelog-heading.mjs
       # pnpm-workspace.yaml enforces the build allowlist and the 7-day release-age cooldown.
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build

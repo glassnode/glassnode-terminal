@@ -1,5 +1,9 @@
 # glassnode-terminal
 
+[![npm version](https://img.shields.io/npm/v/glassnode-terminal.svg)](https://www.npmjs.com/package/glassnode-terminal)
+[![CI](https://github.com/glassnode/glassnode-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/glassnode/glassnode-terminal/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/glassnode-terminal.svg)](./LICENSE)
+
 Interactive terminal UI for exploring [Glassnode](https://glassnode.com) on-chain and market crypto data. Browse assets, metrics, and data in a three-pane explorer with charts, live price tickers, and keyboard navigation.
 
 ## Install
@@ -104,13 +108,20 @@ Press `m` to toggle between modes.
 ## Development
 
 ```bash
-git clone https://github.com/planadecu/glassnode-terminal.git
+git clone https://github.com/glassnode/glassnode-terminal.git
 cd glassnode-terminal
 pnpm install
 pnpm run build
 GLASSNODE_API_KEY=your-key pnpm start
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to open a pull request: the local checks, the
+version bump and changelog entry every change needs, and how releases work. Changes are listed in
+[CHANGELOG.md](./CHANGELOG.md).
+
 ## License
 
-[Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.
+[Apache License 2.0](./LICENSE); see [NOTICE](./NOTICE) for attribution. Versions before 0.2.0
+were published under the MIT License.
