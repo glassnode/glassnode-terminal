@@ -1,6 +1,6 @@
 {
   "name": "glassnode-terminal",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Interactive TUI for exploring Glassnode on-chain and market crypto data",
   "type": "module",
   "main": "dist/cli.js",
@@ -53,15 +53,21 @@
     "name": "Jordi Planadecursach",
     "url": "https://github.com/planadecu"
   },
+  "contributors": [
+    {
+      "name": "Glassnode AG",
+      "url": "https://glassnode.com"
+    }
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/planadecu/glassnode-terminal.git"
+    "url": "git+https://github.com/glassnode/glassnode-terminal.git"
   },
   "bugs": {
-    "url": "https://github.com/planadecu/glassnode-terminal/issues"
+    "url": "https://github.com/glassnode/glassnode-terminal/issues"
   },
-  "homepage": "https://github.com/planadecu/glassnode-terminal#readme",
+  "homepage": "https://github.com/glassnode/glassnode-terminal#readme",
   "dependencies": {
     "@x402/evm": "2.26.0",
     "@x402/fetch": "2.26.0",
@@ -92,7 +98,7 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public",
-    "tag": "latest"
+    "provenance": true
   },
   "packageManager": "pnpm@11.17.0"
 }
