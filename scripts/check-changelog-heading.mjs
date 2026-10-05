@@ -11,9 +11,11 @@
 // Usage: node scripts/check-changelog-heading.mjs [target-branch]
 //   The target defaults to $TARGET_BRANCH, then `main`. Env CHANGELOG and PACKAGE_JSON override
 //   the file paths (for tests). Exits 1 with a GitHub `::error::` annotation on failure.
+//   BASE_SHA enables PR version/notes checks against that commit's package.json.
 /* global process, console */
 import { readFileSync } from 'node:fs';
-import { parseSemver } from './release-plan.mjs';
+import { execFileSync } from 'node:child_process';
+import { compareSemver, parseSemver } from './release-plan.mjs';
 
 /** Returns null when `heading` is acceptable for `target`, or the reason it is not. */
 function checkHeading(heading, version, target) {
@@ -41,3 +43,22 @@ if (error) {
   process.exit(1);
 }
 console.log(`CHANGELOG.md heading "${heading}" is valid for a PR into ${target}.`);
+
+// PR CI supplies the exact base commit. Push/release runs and local heading checks omit it.
+// Release-branch PRs accumulate changes under an unreleased heading without a version bump.
+if (process.env.BASE_SHA && !/^release\//.test(target)) {
+  const base = JSON.parse(execFileSync('git', ['show', `${process.env.BASE_SHA}:package.json`], { encoding: 'utf8' }));
+  if (!parseSemver(version) || !parseSemver(base.version) || compareSemver(version, base.version) <= 0) {
+    console.error(`::error file=package.json::Version ${version} must be greater than base version ${base.version} for a PR into ${target}.`);
+    process.exit(1);
+  }
+  const lines = changelog.split(/\r?\n/);
+  const section = lines.slice(lines.indexOf(heading) + 1);
+  const nextHeading = section.findIndex((line) => line.startsWith('## '));
+  const notes = (nextHeading < 0 ? section : section.slice(0, nextHeading)).join('\n');
+  if (!notes.trim()) {
+    console.error(`::error file=CHANGELOG.md::Add release notes under "${heading}".`);
+    process.exit(1);
+  }
+  console.log(`Version ${version} is greater than base version ${base.version} and has release notes.`);
+}

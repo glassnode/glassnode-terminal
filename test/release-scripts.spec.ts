@@ -337,20 +337,61 @@ describe('release-state.sh (fake npm)', () => {
 });
 
 describe('check-changelog-heading.mjs', () => {
-  function check(changelog: string, version: string, target: string) {
+  function check(changelog: string, version: string, target: string, baseVersion?: string) {
     const dir = tempDir();
+    let baseSha = '';
+    if (baseVersion !== undefined) {
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ version: baseVersion }));
+      for (const args of [
+        ['init', '--quiet'],
+        ['add', 'package.json'],
+        ['-c', 'user.name=Release test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'base'],
+      ]) {
+        const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+        expect(result.status, result.stderr).toBe(0);
+      }
+      baseSha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).stdout.trim();
+    }
     writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ version }));
     return spawnSync('node', [join(scripts, 'check-changelog-heading.mjs'), target], {
       encoding: 'utf8',
+      cwd: dir,
       env: {
         ...process.env,
+        BASE_SHA: baseSha,
         CHANGELOG: join(dir, 'CHANGELOG.md'),
         PACKAGE_JSON: join(dir, 'package.json'),
       },
     });
   }
   const log = (heading: string) => `# Changelog\n\n${heading}\n\n- change\n\n## 0.30.0\n`;
+
+  it.each([
+    ['unchanged', '0.30.1'],
+    ['lower', '0.30.0'],
+    ['build metadata only', '0.30.1+build.2'],
+  ])('rejects a %s PR version even when its changelog heading matches', (_, version) => {
+    const r = check(log(`## ${version}`), version, 'main', '0.30.1');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('must be greater than base version');
+  });
+
+  it('accepts a bumped PR version with release notes', () => {
+    const r = check(log('## 0.30.2'), '0.30.2', 'main', '0.30.1');
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  it('rejects a bumped PR version with an empty release section', () => {
+    const r = check('## 0.30.2\n\n## 0.30.1\n\n- old notes\n', '0.30.2', 'main', '0.30.1');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('Add release notes');
+  });
+
+  it('allows release-branch PRs to keep the base version', () => {
+    const r = check(log('## 1.0.0 (unreleased)'), '0.30.1', 'release/1.0', '0.30.1');
+    expect(r.status, r.stderr).toBe(0);
+  });
 
   it.each([
     ['main, exact version', log('## 0.30.1'), '0.30.1', 'main'],
@@ -405,6 +446,7 @@ describe('check-changelog-heading.mjs', () => {
     const r = spawnSync('node', [join(scripts, 'check-changelog-heading.mjs'), 'release/1.0'], {
       cwd: fileURLToPath(new URL('..', import.meta.url)),
       encoding: 'utf8',
+      env: { ...process.env, BASE_SHA: '' },
     });
     expect(r.status).toBe(0);
   });

@@ -76,7 +76,7 @@ The `version` in `package.json` is exactly what gets published: CI never bumps i
 
 ## CI
 
-- `.github/workflows/ci.yml` runs on PRs into `main` and `release/**`, and `publish.yml` calls it (`workflow_call`) as its `verify` job: the CHANGELOG heading check (`scripts/check-changelog-heading.mjs`: the top heading must be exactly `## <package.json version>`; into `release/**`, `## <x.y.z> (unreleased)` is also accepted), install, build, tests and a CLI smoke test, on Node 22 and 24 (`test (22)`, `test (24)` are the required checks).
+- `.github/workflows/ci.yml` runs on PRs into `main` and `release/**`, and `publish.yml` calls it (`workflow_call`) as its `verify` job: the CHANGELOG heading check (`scripts/check-changelog-heading.mjs`: the top heading must be exactly `## <package.json version>`; into `release/**`, `## <x.y.z> (unreleased)` is also accepted), install, build, tests and a CLI smoke test, on Node 22 and 24 (`test (22)`, `test (24)` are the required checks). PRs into `main` additionally require a version greater than the base commit (`BASE_SHA`) and nonempty release notes.
 - Every action is pinned by full commit SHA with a `# vX.Y.Z` comment, never a movable tag. To bump one, resolve the tag with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` (dereference an annotated tag with `gh api repos/<owner>/<repo>/git/tags/<sha>`), update SHA and comment together, and read the release notes. Dependabot proposes these updates.
 
 ## Publishing
@@ -87,5 +87,4 @@ Same flow as `glassnode-api` (github.com/glassnode/glassnode-api-ts-client):
 - On every push to `main`: `verify` runs `ci.yml`; `release` (read-only) runs `scripts/release-state.sh`, which checks npm (only an E404 means "not published"; any other failure fails the job) and plans the dist-tag with `scripts/release-plan.mjs` (`latest`, `backport-<major>.<minor>` for a version below `latest`, `next` for a prerelease); `publish` runs in the `npm` **environment** (required reviewer, `main` only), re-checks, runs `npm publish --tag <dist-tag>` (via `prepublishOnly`: clean + build), pushes the `v<version>` tag and creates the GitHub Release from the version's `CHANGELOG.md` section. A version already on npm is skipped without asking for approval.
 - **npm Trusted Publishing (OIDC)** with provenance — no `NPM_TOKEN`. The Trusted Publisher for `glassnode-terminal` on npmjs.com must name repo `glassnode/glassnode-terminal`, workflow `publish.yml` and environment `npm`.
 - Merge release PRs one at a time: GitHub keeps only one pending run per concurrency group, so a newer merge can replace an older publish still waiting for approval (CONTRIBUTING.md "Releases" explains detection and recovery).
-- `scripts/release-*.{sh,mjs}` and `check-changelog-heading.mjs` are shared with glassnode-api and tested in `test/release-scripts.spec.ts`; keep them in sync.
-
+- `scripts/release-*.{sh,mjs}` are shared with glassnode-api and tested in `test/release-scripts.spec.ts`; keep them in sync. `check-changelog-heading.mjs` additionally enforces PR version bumps here.
