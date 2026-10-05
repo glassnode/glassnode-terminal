@@ -4,7 +4,7 @@ All notable changes to `glassnode-terminal` are documented here. The project fol
 [semver](https://semver.org/); see [CONTRIBUTING.md](./CONTRIBUTING.md) for how versions and this
 file are updated.
 
-## 0.2.1
+## 0.2.2
 
 - The repository moves to [glassnode/glassnode-terminal](https://github.com/glassnode/glassnode-terminal)
   (from planadecu/glassnode-terminal; GitHub redirects the old URLs). `repository`, `bugs`,
@@ -19,6 +19,8 @@ file are updated.
 - CI checks that the top heading of this file is `## <package.json version>`, and every GitHub
   Action is pinned by commit SHA.
 - Adds `CONTRIBUTING.md` and this changelog.
+- PR CI requires a version greater than the base commit and nonempty release notes. PRs into
+  `release/**` retain the exception for preparing a release without intermediate version bumps.
 
 ## 0.2.0
 
