@@ -1,18 +1,22 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, afterEach } from 'vitest';
 import React from 'react';
 import { Box } from 'ink';
-import { render } from 'ink-testing-library';
+import { render, cleanup } from 'ink-testing-library';
+import type { DataPoint } from '../../src/lib/types.js';
 
 // Capture the size DataView gives the chart instead of rendering a real one.
 const chartSizes = vi.hoisted(() => [] as Array<{ width?: number; height?: number }>);
+const chartValues = vi.hoisted(() => [] as Array<Array<Array<number | null>>>);
 vi.mock('ink-uplot', () => ({
-  InkUPlot: (props: { width?: number; height?: number }) => {
+  InkUPlot: (props: { width?: number; height?: number; data: Array<Array<number | null>> }) => {
     chartSizes.push({ width: props.width, height: props.height });
+    chartValues.push(props.data);
     return null;
   },
 }));
 
 const { DataView } = await import('../../src/components/DataView.js');
+afterEach(() => cleanup());
 
 // Measuring takes a couple of render passes (layout, measure, setState, report), so poll
 // for the expected state instead of sleeping a fixed time (flaky on slower CI runners).
@@ -27,20 +31,26 @@ async function until(cond: () => boolean, timeout = 3000): Promise<void> {
 function renderDataView(
   paneWidth: number,
   paneHeight: number,
-  { viewMode = 'chart', points = 2, onBodyHeightChange }: {
+  { viewMode = 'chart', points = 2, onBodyHeightChange, data: suppliedData, priceData = [], showPrice = false, priceError }: {
     viewMode?: 'chart' | 'table';
     points?: number;
     onBodyHeightChange?: (height: number) => void;
+    data?: DataPoint[];
+    priceData?: DataPoint[];
+    showPrice?: boolean;
+    priceError?: string;
   } = {},
 ) {
   chartSizes.length = 0;
-  const data = Array.from({ length: points }, (_, i) => ({ t: 86400 * (i + 1), v: i + 1 }));
+  chartValues.length = 0;
+  const data = suppliedData ?? Array.from({ length: points }, (_, i) => ({ t: 86400 * (i + 1), v: i + 1 }));
   return render(
     <Box width={paneWidth} height={paneHeight}>
       <DataView
         data={data}
         loading={false}
         error={null}
+        priceError={priceError}
         params={{ interval: '24h', since: '30d', currency: 'usd' }}
         selectedMetric="/addresses/count"
         selectedAsset="BTC"
@@ -48,8 +58,8 @@ function renderDataView(
         visibleRange={[0, points]}
         selectedIndex={0}
         viewMode={viewMode}
-        showPrice={false}
-        priceData={[]}
+        showPrice={showPrice}
+        priceData={priceData}
         chartRedrawKey={0}
         onBodyHeightChange={onBodyHeightChange}
       />
@@ -74,6 +84,45 @@ describe('DataView chart sizing', () => {
     expect(size.width).toBe(32);
     expect(size.height).toBeLessThan(16);
     expect(size.height).toBeGreaterThan(0);
+  });
+});
+
+describe('DataView chart values', () => {
+  it('keeps missing values as gaps and retains real zeros', async () => {
+    renderDataView(80, 20, { data: [{ t: 1, v: 12 }, { t: 2, v: null }, { t: 3 }, { t: 4, v: 0 }] });
+    await until(() => chartValues.length > 0);
+    expect(chartValues.at(-1)).toEqual([[1, 2, 3, 4], [12, null, null, 0]]);
+  });
+
+  it('keeps missing overlay timestamps as gaps', async () => {
+    renderDataView(80, 20, {
+      data: [{ t: 1, v: 12 }, { t: 2, v: 13 }, { t: 3, v: 14 }],
+      showPrice: true,
+      priceData: [{ t: 1, v: 100 }, { t: 3, v: 0 }],
+    });
+    await until(() => chartValues.length > 0);
+    expect(chartValues.at(-1)).toEqual([[1, 2, 3], [100, null, 0], [12, 13, 14]]);
+  });
+
+  it('offers table mode for object-valued metrics instead of drawing zeros', async () => {
+    const instance = renderDataView(80, 20, { data: [{ t: 1, o: { open: 123, close: 456 } }] });
+    await until(() => instance.lastFrame()?.includes('Chart unavailable') ?? false);
+    expect(instance.lastFrame()).toContain('Press v for table view');
+    expect(chartValues).toHaveLength(0);
+  });
+
+  it('preserves structured values in the table', async () => {
+    const instance = renderDataView(80, 20, { viewMode: 'table', data: [{ t: 1, o: { close: 456 } }] });
+    await until(() => instance.lastFrame()?.includes('456') ?? false);
+    expect(instance.lastFrame()).toContain('456');
+    expect(instance.lastFrame()).not.toContain('Chart unavailable');
+  });
+
+  it('shows a price warning alongside the successful metric chart', async () => {
+    const instance = renderDataView(80, 20, { showPrice: true, priceError: 'price unavailable' });
+    await until(() => chartValues.length > 0);
+    expect(instance.lastFrame()).toContain('Price overlay unavailable: price unavailable');
+    expect(chartValues.at(-1)).toEqual([[86400, 172800], [1, 2]]);
   });
 });
 

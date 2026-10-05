@@ -14,7 +14,7 @@ export interface MetricParams {
 
 export interface DataPoint {
   t: number;
-  v?: number | string;
+  v?: number | string | null;
   o?: Record<string, unknown>;
 }
 

@@ -326,7 +326,7 @@ export function App(): React.ReactElement {
   }, [selectedMetricPath, validIntervals, validCurrencies]);
 
   // Metric data + price (fetched in parallel when both metric and asset are selected)
-  const { data, priceData, loading: dataLoading, error: dataError } = useMetricData(
+  const { data, priceData, loading: dataLoading, error: dataError, priceError } = useMetricData(
     selectedMetricPath,
     selectedAssetId,
     params,
@@ -387,13 +387,15 @@ export function App(): React.ReactElement {
     } else if (activePane === Pane.Middle) {
       if (leftIsAssets) {
         const item = filteredMetricItems[filteredMetricNav.selectedIndex];
-        if (item?.type === 'metric') {
+        if (item?.type === 'metric' && highlightedAssetSymbol) {
+          setSelectedAssetId(highlightedAssetSymbol);
           setSelectedMetricPath(item.path);
           lastMiddleMetricPath.current = item.path;
         }
       } else {
         const asset = filteredAssets[filteredAssetNav.selectedIndex];
-        if (asset) {
+        if (asset && highlightedMetricPath) {
+          setSelectedMetricPath(highlightedMetricPath);
           setSelectedAssetId(asset.symbol);
           lastMiddleAssetId.current = asset.symbol;
         }
@@ -401,7 +403,7 @@ export function App(): React.ReactElement {
     }
   }, [activePane, leftIsAssets, displayedAssets, displayedMetricItems, filteredAssets, filteredMetricItems,
     assetNav.selectedIndex, metricNav.selectedIndex, filteredAssetNav.selectedIndex, filteredMetricNav.selectedIndex,
-    selectedMetricPath, selectedAssetId, assetsByMetric]);
+    selectedMetricPath, selectedAssetId, assetsByMetric, highlightedAssetSymbol, highlightedMetricPath]);
 
   useInput((input, key) => {
     if (searchMode) return;
@@ -573,6 +575,7 @@ export function App(): React.ReactElement {
             data={data}
             loading={dataLoading}
             error={dataError}
+            priceError={priceError}
             params={params}
             selectedMetric={selectedMetricPath}
             selectedAsset={selectedAssetId}

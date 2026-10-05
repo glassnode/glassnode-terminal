@@ -171,6 +171,48 @@ describe('App integration', () => {
     mocks.callMetricMock.mockClear();
   });
 
+  it('selecting a middle-pane metric commits the highlighted asset after Tab', async () => {
+    const instance = renderInk(<App />);
+    await wait(100);
+    // Commit BTC, then move back and highlight ETH without committing it.
+    instance.stdin.write(KEYS.enter);
+    await wait();
+    instance.stdin.write('\x1B[D');
+    await wait();
+    instance.stdin.write(KEYS.down);
+    await wait();
+    instance.stdin.write('\t');
+    await wait();
+    mocks.callMetricMock.mockClear();
+    instance.stdin.write(KEYS.enter);
+    await vi.waitFor(() => expect(mocks.callMetricMock).toHaveBeenCalled());
+    expect(mocks.callMetricMock.mock.calls.every((call: any[]) => call[1].a === 'ETH')).toBe(true);
+    instance.unmount();
+  });
+
+  it('selecting a middle-pane asset commits the highlighted metric after Tab', async () => {
+    const instance = renderInk(<App />);
+    await wait(100);
+    instance.stdin.write('m');
+    await wait();
+    // Commit Price USD Close + BTC.
+    instance.stdin.write(KEYS.enter);
+    await wait();
+    instance.stdin.write(KEYS.enter);
+    await wait();
+    // Highlight OHLC without Enter, then choose the asset via the middle pane.
+    instance.stdin.write('\x1B[D');
+    await wait();
+    instance.stdin.write(KEYS.down);
+    await wait();
+    instance.stdin.write('\t');
+    await wait();
+    mocks.callMetricMock.mockClear();
+    instance.stdin.write(KEYS.enter);
+    await vi.waitFor(() => expect(mocks.callMetricMock).toHaveBeenCalledWith('/market/price_usd_ohlc', expect.objectContaining({ a: 'BTC' })));
+    instance.unmount();
+  });
+
   it('per-pane search: /card filters assets only, → to metrics, /price filters metrics only, ↓↓ enter renders, esc, i cycles interval', async () => {
     const instance = renderInk(<App />);
     // Widen the terminal so all 3 panes fit (asset=35 + metric=70 + data needs space)
