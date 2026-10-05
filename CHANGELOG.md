@@ -4,6 +4,17 @@ All notable changes to `glassnode-terminal` are documented here. The project fol
 [semver](https://semver.org/); see [CONTRIBUTING.md](./CONTRIBUTING.md) for how versions and this
 file are updated.
 
+## 0.2.3
+
+- Keep successful metric data visible when the optional price overlay fails, and show an overlay
+  warning. Toggling the overlay no longer refetches the primary metric, avoiding extra x402 calls.
+- Ignore obsolete metric/overlay responses and reset data, loading and errors when selection is
+  cleared.
+- Show missing chart values and price timestamps as gaps instead of zeros. Structured responses
+  offer table mode rather than displaying a fabricated chart.
+- Selecting an item in the middle pane commits the highlighted metric/asset pair in both browse
+  modes, including when entering that pane with Tab.
+
 ## 0.2.2
 
 - The repository moves to [glassnode/glassnode-terminal](https://github.com/glassnode/glassnode-terminal)

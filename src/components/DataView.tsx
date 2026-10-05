@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, measureElement, type DOMElement } from 'ink';
 import { InkUPlot } from 'ink-uplot';
+import type uPlot from 'uplot';
 import type { DataPoint, MetricParams } from '../lib/types.js';
 import { formatDate, formatValue, padRight } from '../lib/format.js';
 import { ParamBar } from './ParamBar.js';
@@ -12,6 +13,7 @@ interface DataViewProps {
   data: DataPoint[];
   loading: boolean;
   error: string | null;
+  priceError?: string | null;
   params: MetricParams;
   selectedMetric: string | null;
   selectedAsset: string | null;
@@ -31,6 +33,7 @@ export function DataView({
   data,
   loading,
   error,
+  priceError,
   params,
   selectedMetric,
   selectedAsset,
@@ -69,29 +72,33 @@ export function DataView({
     if (!showPrice || priceData.length === 0) return null;
     const map = new Map<number, number>();
     for (const p of priceData) {
-      if (typeof p.v === 'number') map.set(p.t, p.v);
+      if (typeof p.v === 'number' && Number.isFinite(p.v)) map.set(p.t, p.v);
     }
     return map;
   }, [showPrice, priceData]);
 
   // Prepare chart data: [timestamps[], values[]] with optional price overlay
-  const chartData = useMemo(() => {
-    if (data.length === 0) return null;
+  const chartUnsupported = data.some((point) =>
+    (point.v != null && typeof point.v !== 'number') ||
+    (point.v == null && point.o != null),
+  );
+  const chartData = useMemo<uPlot.AlignedData | null>(() => {
+    if (data.length === 0 || chartUnsupported) return null;
     const timestamps: number[] = [];
-    const values: number[] = [];
+    const values: Array<number | null> = [];
     for (const point of data) {
       timestamps.push(point.t);
-      values.push(typeof point.v === 'number' ? point.v : 0);
+      values.push(typeof point.v === 'number' && Number.isFinite(point.v) ? point.v : null);
     }
 
     if (priceMap) {
-      const prices: number[] = timestamps.map((t) => priceMap.get(t) ?? 0);
+      const prices = timestamps.map((t) => priceMap.get(t) ?? null);
       // Price before value so uPlot draws it first (behind the main metric line).
-      return [timestamps, prices, values] as [number[], number[], number[]];
+      return [timestamps, prices, values];
     }
 
-    return [timestamps, values] as [number[], number[]];
-  }, [data, priceMap]);
+    return [timestamps, values];
+  }, [data, priceMap, chartUnsupported]);
 
   const chartOpts = useMemo(() => {
     const METRIC_COLOR = '#22d3ee'; // cyan — main metric line + its left axis
@@ -138,6 +145,12 @@ export function DataView({
         </Box>
       )}
 
+      {showPrice && priceError && (
+        <Box paddingX={1}>
+          <Text color="yellow">Price overlay unavailable: {priceError}</Text>
+        </Box>
+      )}
+
       {!loading && !error && data.length === 0 && selectedMetric && selectedAsset && (
         <Box paddingX={1}>
           <Text dimColor>No data</Text>
@@ -145,6 +158,11 @@ export function DataView({
       )}
 
       <Box ref={bodyRef} flexDirection="column" flexGrow={1} flexShrink={1} flexBasis={0} overflow="hidden">
+        {!loading && !error && data.length > 0 && viewMode === 'chart' && chartUnsupported && (
+          <Box paddingX={1}>
+            <Text dimColor>Chart unavailable for structured values. Press v for table view.</Text>
+          </Box>
+        )}
         {!loading && !error && data.length > 0 && viewMode === 'table' && (
           <Box flexDirection="column">
             <Box paddingX={1} gap={2}>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '../lib/api-client.js';
 import { parseTime } from '../lib/time-parse.js';
 import type { DataPoint, MetricParams } from '../lib/types.js';
@@ -8,6 +8,7 @@ interface UseMetricDataResult {
   priceData: DataPoint[];
   loading: boolean;
   error: string | null;
+  priceError: string | null;
 }
 
 export function useMetricData(
@@ -20,47 +21,60 @@ export function useMetricData(
   const [priceData, setPriceData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef(0);
+  const [priceError, setPriceError] = useState<string | null>(null);
+
+  // Both requests use the same time range. Overlay toggles do not change it or refetch the metric.
+  const queryParams = useMemo(() => metricPath && asset ? {
+    a: asset,
+    i: params.interval,
+    s: String(parseTime(params.since)),
+    c: params.currency,
+  } : null, [metricPath, asset, params.interval, params.since, params.currency]);
 
   useEffect(() => {
-    if (!metricPath || !asset) {
-      setData([]);
-      setPriceData([]);
-      return;
+    let active = true;
+    setData([]);
+    setError(null);
+    setLoading(false);
+
+    if (metricPath && queryParams) {
+      setLoading(true);
+      Promise.resolve()
+        .then(() => createClient().callMetric<DataPoint[]>(metricPath, queryParams))
+        .then((result) => {
+          if (!active) return;
+          setData(Array.isArray(result) ? result : []);
+          setLoading(false);
+        })
+        .catch((err: Error) => {
+          if (!active) return;
+          setError(err.message);
+          setLoading(false);
+        });
     }
 
-    const requestId = ++abortRef.current;
-    setLoading(true);
-    setError(null);
+    // Invalidates late successes/failures on selection changes, clearing, and unmount.
+    return () => { active = false; };
+  }, [metricPath, queryParams]);
 
-    const queryParams: Record<string, string> = {
-      a: asset,
-      i: params.interval,
-      s: String(parseTime(params.since)),
-      c: params.currency,
-    };
+  useEffect(() => {
+    let active = true;
+    setPriceData([]);
+    setPriceError(null);
 
-    const client = createClient();
-    const metricPromise = client.callMetric<DataPoint[]>(metricPath, queryParams);
+    if (showPrice && metricPath && metricPath !== '/market/price_usd_close' && queryParams) {
+      Promise.resolve()
+        .then(() => createClient().callMetric<DataPoint[]>('/market/price_usd_close', queryParams))
+        .then((result) => {
+          if (active) setPriceData(Array.isArray(result) ? result : []);
+        })
+        .catch((err: Error) => {
+          if (active) setPriceError(err.message);
+        });
+    }
 
-    const fetchPrice = showPrice && metricPath !== '/market/price_usd_close';
-    const pricePromise = fetchPrice
-      ? client.callMetric<DataPoint[]>('/market/price_usd_close', queryParams)
-      : Promise.resolve([]);
+    return () => { active = false; };
+  }, [metricPath, queryParams, showPrice]);
 
-    Promise.all([metricPromise, pricePromise])
-      .then(([metricResult, priceResult]) => {
-        if (abortRef.current !== requestId) return;
-        setData(Array.isArray(metricResult) ? metricResult : []);
-        setPriceData(Array.isArray(priceResult) ? priceResult : []);
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        if (abortRef.current !== requestId) return;
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [metricPath, asset, params.interval, params.since, params.currency, showPrice]);
-
-  return { data, priceData, loading, error };
+  return { data, priceData, loading, error, priceError };
 }
