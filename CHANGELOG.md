@@ -4,6 +4,11 @@ All notable changes to `glassnode-terminal` are documented here. The project fol
 [semver](https://semver.org/); see [CONTRIBUTING.md](./CONTRIBUTING.md) for how versions and this
 file are updated.
 
+## 0.2.5
+
+- Bump dependencies: `@x402/evm` and `@x402/fetch` 2.28.0, `viem` 2.57.2, `ws` 8.22.0,
+  `@types/ws` 8.18.2, `@types/node` 26.6.4, `vitest` 5.0.3.
+
 ## 0.2.4
 
 - Add repository owners in `CODEOWNERS` so GitHub can request ownership reviews automatically.
