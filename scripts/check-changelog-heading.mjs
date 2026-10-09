@@ -11,11 +11,29 @@
 // Usage: node scripts/check-changelog-heading.mjs [target-branch]
 //   The target defaults to $TARGET_BRANCH, then `main`. Env CHANGELOG and PACKAGE_JSON override
 //   the file paths (for tests). Exits 1 with a GitHub `::error::` annotation on failure.
-//   BASE_SHA enables PR version/notes checks against that commit's package.json.
+//   BASE_SHA enables PR version/notes checks against that commit's package.json. PRs that only
+//   change files outside the published package (NO_RELEASE_PATHS) skip the version check.
 /* global process, console */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { compareSemver, parseSemver } from './release-plan.mjs';
+
+// Changes to these paths never reach users of the npm package, so they need no version bump.
+const NO_RELEASE_PATHS = [
+  /^(AGENTS|CLAUDE|CONTRIBUTING|README|SECURITY)\.md$/,
+  /^CODEOWNERS$/,
+  /^\.gitignore$/,
+  /^\.github\//,
+  /^scripts\//,
+  /^test\//,
+  /^vitest\.config\.ts$/,
+];
+
+/** Files changed since `baseSha`: committed, staged, unstaged and untracked. */
+function changedFiles(baseSha) {
+  const git = (args) => execFileSync('git', args, { encoding: 'utf8' }).split('\n').filter(Boolean);
+  return [...git(['diff', '--name-only', baseSha]), ...git(['ls-files', '--others', '--exclude-standard'])];
+}
 
 /** Returns null when `heading` is acceptable for `target`, or the reason it is not. */
 function checkHeading(heading, version, target) {
@@ -47,6 +65,11 @@ console.log(`CHANGELOG.md heading "${heading}" is valid for a PR into ${target}.
 // PR CI supplies the exact base commit. Push/release runs and local heading checks omit it.
 // Release-branch PRs accumulate changes under an unreleased heading without a version bump.
 if (process.env.BASE_SHA && !/^release\//.test(target)) {
+  const changed = changedFiles(process.env.BASE_SHA);
+  if (changed.length > 0 && changed.every((file) => NO_RELEASE_PATHS.some((re) => re.test(file)))) {
+    console.log(`No version bump needed: only files outside the package changed (${changed.join(', ')}).`);
+    process.exit(0);
+  }
   const base = JSON.parse(execFileSync('git', ['show', `${process.env.BASE_SHA}:package.json`], { encoding: 'utf8' }));
   if (!parseSemver(version) || !parseSemver(base.version) || compareSemver(version, base.version) <= 0) {
     console.error(`::error file=package.json::Version ${version} must be greater than base version ${base.version} for a PR into ${target}.`);

@@ -46,19 +46,22 @@ UI changes by eye; charts draw differently in kitty, iTerm2/VS Code and plain te
 
 ### 3. Bump the version and add a changelog entry
 
-Every change bumps `version` in `package.json` and adds an entry at the top of `CHANGELOG.md`
-(a `## <version>` heading) describing it. Follow [semver](https://semver.org/):
+Every change to the published package bumps `version` in `package.json` and adds an entry at the
+top of `CHANGELOG.md` (a `## <version>` heading) describing it. Changes that only touch files
+outside the package (docs such as `README.md` and `CONTRIBUTING.md`, `CODEOWNERS`, `.github/`,
+`scripts/`, `test/`) skip both; the list is `NO_RELEASE_PATHS` in
+`scripts/check-changelog-heading.mjs`. Follow [semver](https://semver.org/):
 
 - **Major**: breaking changes for users (a removed command-line flag or environment variable, a
   changed default that alters behaviour, a higher minimum Node.js version).
 - **Minor**: new features, flags, keys or views that are backward compatible.
-- **Patch**: bug fixes, docs, dependency bumps and internal refactors with no behaviour change.
+- **Patch**: bug fixes, dependency bumps and internal refactors with no behaviour change.
 
 The version in your PR is exactly the one that gets published: the release workflow does not bump
 it. A PR merged without a bump publishes nothing. CI checks that the top `CHANGELOG.md` heading is
 exactly `## <package.json version>` (`node scripts/check-changelog-heading.mjs` runs it locally).
-For PRs into `main`, CI also compares the version with the exact PR base commit: it must be
-greater, and its changelog section must contain release notes. Locally, set `BASE_SHA` to a base
+For PRs into `main` that change the package, CI also compares the version with the exact PR base
+commit: it must be greater, and its changelog section must contain release notes. Locally, set `BASE_SHA` to a base
 commit to run the same comparison.
 
 **Release branches.** A large release can be prepared on a `release/**` branch. PRs into it carry
