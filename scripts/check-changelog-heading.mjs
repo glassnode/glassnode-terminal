@@ -11,7 +11,9 @@
 // Usage: node scripts/check-changelog-heading.mjs [target-branch]
 //   The target defaults to $TARGET_BRANCH, then `main`. Env CHANGELOG and PACKAGE_JSON override
 //   the file paths (for tests). Exits 1 with a GitHub `::error::` annotation on failure.
-//   BASE_SHA enables PR version/notes checks against that commit's package.json.
+//   BASE_SHA enables PR version/notes checks against that commit's package.json. PR_AUTHOR
+//   `dependabot[bot]` skips them: Dependabot cannot bump the version or write release notes, so its
+//   dependency updates merge without publishing and ship with the next release.
 /* global process, console */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -46,7 +48,10 @@ console.log(`CHANGELOG.md heading "${heading}" is valid for a PR into ${target}.
 
 // PR CI supplies the exact base commit. Push/release runs and local heading checks omit it.
 // Release-branch PRs accumulate changes under an unreleased heading without a version bump.
-if (process.env.BASE_SHA && !/^release\//.test(target)) {
+const dependabot = process.env.PR_AUTHOR === 'dependabot[bot]';
+if (process.env.BASE_SHA && dependabot) {
+  console.log('Dependabot PR: version bump not required; the update ships with the next release.');
+} else if (process.env.BASE_SHA && !/^release\//.test(target)) {
   const base = JSON.parse(execFileSync('git', ['show', `${process.env.BASE_SHA}:package.json`], { encoding: 'utf8' }));
   if (!parseSemver(version) || !parseSemver(base.version) || compareSemver(version, base.version) <= 0) {
     console.error(`::error file=package.json::Version ${version} must be greater than base version ${base.version} for a PR into ${target}.`);
