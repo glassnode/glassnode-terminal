@@ -4,6 +4,13 @@ All notable changes to `glassnode-terminal` are documented here. The project fol
 [semver](https://semver.org/); see [CONTRIBUTING.md](./CONTRIBUTING.md) for how versions and this
 file are updated.
 
+## 0.2.5
+
+- CI no longer requires a version bump on Dependabot PRs: their dependency updates merge without
+  publishing and ship with the next release.
+- Raise the transitive dev dependency `source-map-js` to 1.2.2 (GHSA-68fv-2mgg-jv7q), which
+  Dependabot could not update in the pnpm lockfile.
+
 ## 0.2.4
 
 - Add repository owners in `CODEOWNERS` so GitHub can request ownership reviews automatically.

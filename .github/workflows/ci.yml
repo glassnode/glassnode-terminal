@@ -40,11 +40,13 @@ jobs:
       # The top CHANGELOG.md heading must be exactly `## <package.json version>` (publish.yml takes
       # the GitHub Release notes from that line). Into release/** a `## <x.y.z> (unreleased)`
       # heading is accepted too. The target is the PR's base branch, or the pushed branch (main)
-      # when publish.yml calls this.
+      # when publish.yml calls this. Dependabot PRs (identified by the PR author, which only
+      # Dependabot can be, not the branch name) skip the version bump and ship with the next release.
       - name: Check the CHANGELOG.md heading
         env:
           TARGET_BRANCH: ${{ github.base_ref || github.ref_name }}
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          PR_AUTHOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || '' }}
         run: node scripts/check-changelog-heading.mjs
       # pnpm-workspace.yaml enforces the build allowlist and the 7-day release-age cooldown.
       - run: pnpm install --frozen-lockfile

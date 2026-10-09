@@ -337,7 +337,7 @@ describe('release-state.sh (fake npm)', () => {
 });
 
 describe('check-changelog-heading.mjs', () => {
-  function check(changelog: string, version: string, target: string, baseVersion?: string) {
+  function check(changelog: string, version: string, target: string, baseVersion?: string, prAuthor = '') {
     const dir = tempDir();
     let baseSha = '';
     if (baseVersion !== undefined) {
@@ -360,6 +360,7 @@ describe('check-changelog-heading.mjs', () => {
       env: {
         ...process.env,
         BASE_SHA: baseSha,
+        PR_AUTHOR: prAuthor,
         CHANGELOG: join(dir, 'CHANGELOG.md'),
         PACKAGE_JSON: join(dir, 'package.json'),
       },
@@ -380,6 +381,24 @@ describe('check-changelog-heading.mjs', () => {
   it('accepts a bumped PR version with release notes', () => {
     const r = check(log('## 0.30.2'), '0.30.2', 'main', '0.30.1');
     expect(r.status, r.stderr).toBe(0);
+  });
+
+  it('lets Dependabot PRs keep the base version', () => {
+    const r = check(log('## 0.30.1'), '0.30.1', 'main', '0.30.1', 'dependabot[bot]');
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('version bump not required');
+  });
+
+  it.each(['someone', 'dependabot'])('still requires a bump from PR author %s', (author) => {
+    const r = check(log('## 0.30.1'), '0.30.1', 'main', '0.30.1', author);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('must be greater than base version');
+  });
+
+  it('still checks the changelog heading on Dependabot PRs', () => {
+    const r = check(log('## 0.30.2'), '0.30.1', 'main', '0.30.1', 'dependabot[bot]');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/must be "## 0.30.1"/);
   });
 
   it('rejects a bumped PR version with an empty release section', () => {

@@ -67,7 +67,7 @@ Interactive TUI (Terminal User Interface) for Glassnode on-chain crypto data, bu
 
 Follow [semver](https://semver.org/) (major: breaking for users — removed flags/env vars, changed defaults, higher Node floor; minor: new features; patch: fixes, docs, dependency bumps, refactors).
 
-**Every change** (except PRs into `release/**` branches, which still add a CHANGELOG entry) MUST:
+**Every change** (except PRs into `release/**` branches, which still add a CHANGELOG entry, and Dependabot PRs, which ship with the next release) MUST:
 
 1. Bump `version` in `package.json`
 2. Add a `## <version>` entry at the top of `CHANGELOG.md`
@@ -76,7 +76,7 @@ The `version` in `package.json` is exactly what gets published: CI never bumps i
 
 ## CI
 
-- `.github/workflows/ci.yml` runs on PRs into `main` and `release/**`, and `publish.yml` calls it (`workflow_call`) as its `verify` job: the CHANGELOG heading check (`scripts/check-changelog-heading.mjs`: the top heading must be exactly `## <package.json version>`; into `release/**`, `## <x.y.z> (unreleased)` is also accepted), install, build, tests and a CLI smoke test, on Node 22 and 24 (`test (22)`, `test (24)` are the required checks). PRs into `main` additionally require a version greater than the base commit (`BASE_SHA`) and nonempty release notes.
+- `.github/workflows/ci.yml` runs on PRs into `main` and `release/**`, and `publish.yml` calls it (`workflow_call`) as its `verify` job: the CHANGELOG heading check (`scripts/check-changelog-heading.mjs`: the top heading must be exactly `## <package.json version>`; into `release/**`, `## <x.y.z> (unreleased)` is also accepted), install, build, tests and a CLI smoke test, on Node 22 and 24 (`test (22)`, `test (24)` are the required checks). PRs into `main` additionally require a version greater than the base commit (`BASE_SHA`) and nonempty release notes, except PRs authored by `dependabot[bot]` (`PR_AUTHOR`).
 - Every action is pinned by full commit SHA with a `# vX.Y.Z` comment, never a movable tag. To bump one, resolve the tag with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` (dereference an annotated tag with `gh api repos/<owner>/<repo>/git/tags/<sha>`), update SHA and comment together, and read the release notes. Dependabot proposes these updates.
 
 ## Publishing

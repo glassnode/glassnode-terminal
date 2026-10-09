@@ -61,6 +61,11 @@ For PRs into `main`, CI also compares the version with the exact PR base commit:
 greater, and its changelog section must contain release notes. Locally, set `BASE_SHA` to a base
 commit to run the same comparison.
 
+**Dependabot PRs.** Dependabot cannot bump the version or write release notes, so CI skips the
+version comparison for PRs opened by `dependabot[bot]` (the heading check still runs). Merging one
+publishes nothing; the update ships with the next release, whose `CHANGELOG.md` entry should
+mention it. For an urgent security fix, open a release PR right after merging.
+
 **Release branches.** A large release can be prepared on a `release/**` branch. PRs into it carry
 no version bump but still add their `CHANGELOG.md` entry under a single
 `## <x.y.z> (unreleased)` heading; the last PR bumps the version and renames the heading to
