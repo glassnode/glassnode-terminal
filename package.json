@@ -1,6 +1,6 @@
 {
   "name": "glassnode-terminal",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Interactive TUI for exploring Glassnode on-chain and market crypto data",
   "type": "module",
   "main": "dist/cli.js",
