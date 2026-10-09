@@ -56,9 +56,8 @@ jobs:
 
   publish:
     needs: [verify, release]
-    # Only from the official repository: never from a fork, nor from the old
-    # planadecu/glassnode-terminal before the transfer (GN-177), where the `npm` environment and
-    # its required reviewer don't exist.
+    # Only from the official repository: never from a fork, where the `npm` environment and its
+    # required reviewer don't exist.
     if: needs.release.outputs.action != 'skip' && github.repository == 'glassnode/glassnode-terminal'
     runs-on: ubuntu-latest
     # Required reviewer (the maintainer) and a `main`-only deployment branch rule are configured
