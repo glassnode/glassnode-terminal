@@ -8,6 +8,8 @@ file are updated.
 
 - CI no longer requires a version bump on Dependabot PRs: their dependency updates merge without
   publishing and ship with the next release.
+- Raise the transitive dev dependency `source-map-js` to 1.2.2 (GHSA-68fv-2mgg-jv7q), which
+  Dependabot could not update in the pnpm lockfile.
 
 ## 0.2.4
 
