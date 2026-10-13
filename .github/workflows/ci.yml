@@ -26,7 +26,7 @@ jobs:
         # "test (24)") are the required checks in the repository rulesets.
         node: [22, 24]
     steps:
-      # Every action is pinned by full commit SHA (see CLAUDE.md "CI").
+      # Every action is pinned by full commit SHA (see CONTRIBUTING.md "CI and workflows").
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Version enforcement compares with the exact PR base commit.
