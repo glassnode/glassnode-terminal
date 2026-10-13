@@ -19,7 +19,8 @@ minimumReleaseAgeExclude:
   # glassnode-api's x402 needs ^2.18.0 to complete x402Version-2 payments.
   - '@x402/*'
 
-# Security floors for transitive dev deps (vitest > vite > postcss > nanoid).
+# Security floors for transitive dev deps (vitest > vite > postcss > nanoid, source-map-js).
 overrides:
   postcss: ^8.5.23
   nanoid@3: ^3.3.18
+  source-map-js: ^1.2.2
