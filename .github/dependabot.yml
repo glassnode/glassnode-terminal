@@ -10,8 +10,14 @@ updates:
       # Repo author's own packages: take the latest immediately.
       exclude: [glassnode-api, ink-uplot]
     groups:
-      # One PR per week for all non-major bumps; majors stay separate for review.
-      minor-and-patch:
+      # One PR per week for each dependency type's non-major bumps; majors stay separate for review.
+      # A runtime PR changes what users install and needs a version bump (see CONTRIBUTING.md);
+      # a development PR needs none and passes CI as opened.
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
         update-types: [minor, patch]
     open-pull-requests-limit: 5
 

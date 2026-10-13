@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -351,6 +351,9 @@ describe('check-changelog-heading.mjs', () => {
         expect(result.status, result.stderr).toBe(0);
       }
       baseSha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).stdout.trim();
+      // The PR changes a published file, so the version rules apply.
+      mkdirSync(join(dir, 'src'));
+      writeFileSync(join(dir, 'src', 'index.ts'), 'export {};\n');
     }
     writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ version }));
@@ -373,6 +376,62 @@ describe('check-changelog-heading.mjs', () => {
     ['build metadata only', '0.30.1+build.2'],
   ])('rejects a %s PR version even when its changelog heading matches', (_, version) => {
     const r = check(log(`## ${version}`), version, 'main', '0.30.1');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('must be greater than base version');
+  });
+
+  // In these cases CHANGELOG.md matches the base: only the extra files differ.
+  function checkOnly(extraFiles: Record<string, string>) {
+    const dir = tempDir();
+    const changelog = log('## 0.30.1');
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ version: '0.30.1' }));
+    writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
+    const git = (args: string[]) => {
+      const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+      expect(result.status, result.stderr).toBe(0);
+      return result.stdout.trim();
+    };
+    git(['init', '--quiet']);
+    git(['add', '.']);
+    git(['-c', 'user.name=Release test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'base']);
+    const baseSha = git(['rev-parse', 'HEAD']);
+    for (const [file, content] of Object.entries(extraFiles)) {
+      mkdirSync(dirname(join(dir, file)), { recursive: true });
+      writeFileSync(join(dir, file), content);
+    }
+    return spawnSync('node', [join(scripts, 'check-changelog-heading.mjs'), 'main'], {
+      encoding: 'utf8',
+      cwd: dir,
+      env: { ...process.env, BASE_SHA: baseSha, CHANGELOG: join(dir, 'CHANGELOG.md'), PACKAGE_JSON: join(dir, 'package.json') },
+    });
+  }
+
+  it.each([
+    ['CODEOWNERS', { CODEOWNERS: '* @a @b\n' }],
+    ['docs', { 'README.md': 'docs\n', 'CONTRIBUTING.md': 'docs\n' }],
+    ['CI and tests', { '.github/workflows/ci.yml': 'name: CI\n', 'test/x.spec.ts': '\n' }],
+    ['other unlisted files', { 'eslint.config.js': '\n', 'docs/x.md': 'docs\n' }],
+    [
+      'devDependencies',
+      { 'package.json': JSON.stringify({ version: '0.30.1', devDependencies: { vitest: '5.0.3' } }), 'pnpm-lock.yaml': 'x\n' },
+    ],
+  ])('skips the version check when only %s change', (_, files) => {
+    const r = checkOnly(files);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('No version bump needed');
+  });
+
+  it.each([
+    ['src/', { CODEOWNERS: '* @a @b\n', 'src/x.ts': 'export {};\n' }],
+    ['package.json dependencies', { 'package.json': JSON.stringify({ version: '0.30.1', dependencies: { x: '1.0.0' } }) }],
+    [
+      'dependencies alongside devDependencies',
+      { 'package.json': JSON.stringify({ version: '0.30.1', dependencies: { x: '1.0.0' }, devDependencies: { y: '1.0.0' } }) },
+    ],
+    ['tsconfig.json', { 'tsconfig.json': '{}\n' }],
+    ['NOTICE', { NOTICE: 'Copyright\n' }],
+  ])('requires a bump when %s changes', (_, files) => {
+    const r = checkOnly(files);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('must be greater than base version');
   });
