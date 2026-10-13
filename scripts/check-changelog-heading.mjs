@@ -11,23 +11,17 @@
 // Usage: node scripts/check-changelog-heading.mjs [target-branch]
 //   The target defaults to $TARGET_BRANCH, then `main`. Env CHANGELOG and PACKAGE_JSON override
 //   the file paths (for tests). Exits 1 with a GitHub `::error::` annotation on failure.
-//   BASE_SHA enables PR version/notes checks against that commit's package.json. PRs that only
-//   change files outside the published package (NO_RELEASE_PATHS) skip the version check.
+//   BASE_SHA enables PR version/notes checks against that commit's package.json. They apply only
+//   to PRs that change the published package (RELEASE_PATHS).
 /* global process, console */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { compareSemver, parseSemver } from './release-plan.mjs';
 
-// Changes to these paths never reach users of the npm package, so they need no version bump.
-const NO_RELEASE_PATHS = [
-  /^(AGENTS|CLAUDE|CONTRIBUTING|README|SECURITY)\.md$/,
-  /^CODEOWNERS$/,
-  /^\.gitignore$/,
-  /^\.github\//,
-  /^scripts\//,
-  /^test\//,
-  /^vitest\.config\.ts$/,
-];
+// Changes to these paths change what users of the npm package get, so they need a version bump:
+// the source compiled into dist/, the build config, package.json (dependencies, bin, engines) and
+// the license files in the tarball. Anything else (docs, CI, scripts, tests) needs none.
+const RELEASE_PATHS = [/^src\//, /^tsconfig\.json$/, /^package\.json$/, /^(LICENSE|NOTICE)$/];
 
 /** Files changed since `baseSha`: committed, staged, unstaged and untracked. */
 function changedFiles(baseSha) {
@@ -66,8 +60,8 @@ console.log(`CHANGELOG.md heading "${heading}" is valid for a PR into ${target}.
 // Release-branch PRs accumulate changes under an unreleased heading without a version bump.
 if (process.env.BASE_SHA && !/^release\//.test(target)) {
   const changed = changedFiles(process.env.BASE_SHA);
-  if (changed.length > 0 && changed.every((file) => NO_RELEASE_PATHS.some((re) => re.test(file)))) {
-    console.log(`No version bump needed: only files outside the package changed (${changed.join(', ')}).`);
+  if (!changed.some((file) => RELEASE_PATHS.some((re) => re.test(file)))) {
+    console.log(`No version bump needed: no published files changed (${changed.join(', ') || 'none'}).`);
     process.exit(0);
   }
   const base = JSON.parse(execFileSync('git', ['show', `${process.env.BASE_SHA}:package.json`], { encoding: 'utf8' }));

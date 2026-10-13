@@ -72,7 +72,7 @@ Follow [semver](https://semver.org/) (major: breaking for users — removed flag
 1. Bump `version` in `package.json`
 2. Add a `## <version>` entry at the top of `CHANGELOG.md`
 
-Changes that only touch files outside the package (`NO_RELEASE_PATHS` in `scripts/check-changelog-heading.mjs`: docs, `CODEOWNERS`, `.github/`, `scripts/`, `test/`) need neither.
+Only changes to published files need them: `RELEASE_PATHS` in `scripts/check-changelog-heading.mjs` (`src/`, `tsconfig.json`, `package.json`, `LICENSE`, `NOTICE`). Docs, `CODEOWNERS`, `.github/`, `scripts/` and `test/` need neither.
 
 The `version` in `package.json` is exactly what gets published: CI never bumps it. A change merged without a bump publishes nothing.
 

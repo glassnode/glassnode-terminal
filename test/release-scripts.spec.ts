@@ -351,6 +351,9 @@ describe('check-changelog-heading.mjs', () => {
         expect(result.status, result.stderr).toBe(0);
       }
       baseSha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).stdout.trim();
+      // The PR changes a published file, so the version rules apply.
+      mkdirSync(join(dir, 'src'));
+      writeFileSync(join(dir, 'src', 'index.ts'), 'export {};\n');
     }
     writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ version }));
@@ -407,14 +410,20 @@ describe('check-changelog-heading.mjs', () => {
     ['CODEOWNERS', { CODEOWNERS: '* @a @b\n' }],
     ['docs', { 'README.md': 'docs\n', 'CONTRIBUTING.md': 'docs\n' }],
     ['CI and tests', { '.github/workflows/ci.yml': 'name: CI\n', 'test/x.spec.ts': '\n' }],
+    ['other unlisted files', { 'eslint.config.js': '\n', 'docs/x.md': 'docs\n' }],
   ])('skips the version check when only %s change', (_, files) => {
     const r = checkOnly(files);
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).toContain('No version bump needed');
   });
 
-  it('requires a bump when package files change too', () => {
-    const r = checkOnly({ CODEOWNERS: '* @a @b\n', 'src/x.ts': 'export {};\n' });
+  it.each([
+    ['src/', { CODEOWNERS: '* @a @b\n', 'src/x.ts': 'export {};\n' }],
+    ['package.json', { 'package.json': JSON.stringify({ version: '0.30.1', dependencies: { x: '1.0.0' } }) }],
+    ['tsconfig.json', { 'tsconfig.json': '{}\n' }],
+    ['NOTICE', { NOTICE: 'Copyright\n' }],
+  ])('requires a bump when %s changes', (_, files) => {
+    const r = checkOnly(files);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('must be greater than base version');
   });
