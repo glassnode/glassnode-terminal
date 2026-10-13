@@ -72,7 +72,7 @@ Follow [semver](https://semver.org/) (major: breaking for users — removed flag
 1. Bump `version` in `package.json`
 2. Add a `## <version>` entry at the top of `CHANGELOG.md`
 
-Only changes to published files need them: `RELEASE_PATHS` in `scripts/check-changelog-heading.mjs` (`src/`, `tsconfig.json`, `package.json`, `LICENSE`, `NOTICE`). Docs, `CODEOWNERS`, `.github/`, `scripts/` and `test/` need neither.
+Only changes to published files need them: `RELEASE_PATHS` in `scripts/check-changelog-heading.mjs` (`src/`, `tsconfig.json`, `package.json`, `LICENSE`, `NOTICE`). In `package.json`, `devDependencies` don't count. Docs, `CODEOWNERS`, `.github/`, `scripts/`, `test/` and the lockfile need neither. Dependabot opens separate runtime and development PRs: push a version bump and CHANGELOG entry onto a runtime one before merging.
 
 The `version` in `package.json` is exactly what gets published: CI never bumps it. A change merged without a bump publishes nothing.
 

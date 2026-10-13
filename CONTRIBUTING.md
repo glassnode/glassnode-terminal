@@ -49,8 +49,11 @@ UI changes by eye; charts draw differently in kitty, iTerm2/VS Code and plain te
 Every change to the published package bumps `version` in `package.json` and adds an entry at the
 top of `CHANGELOG.md` (a `## <version>` heading) describing it. The package is what changes
 `src/`, `tsconfig.json`, `package.json`, `LICENSE` or `NOTICE` (`RELEASE_PATHS` in
-`scripts/check-changelog-heading.mjs`); changes elsewhere (docs, `CODEOWNERS`, `.github/`,
-`scripts/`, `test/`) skip both. Follow [semver](https://semver.org/):
+`scripts/check-changelog-heading.mjs`; in `package.json`, `devDependencies` don't count); changes
+elsewhere (docs, `CODEOWNERS`, `.github/`, `scripts/`, `test/`, the lockfile) skip both. Dependabot
+opens separate PRs for runtime and development dependencies: a development PR passes as opened; a
+runtime PR changes what users install, so push a patch bump and a `CHANGELOG.md` entry onto it
+before merging. Follow [semver](https://semver.org/):
 
 - **Major**: breaking changes for users (a removed command-line flag or environment variable, a
   changed default that alters behaviour, a higher minimum Node.js version).

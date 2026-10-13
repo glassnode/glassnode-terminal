@@ -411,6 +411,10 @@ describe('check-changelog-heading.mjs', () => {
     ['docs', { 'README.md': 'docs\n', 'CONTRIBUTING.md': 'docs\n' }],
     ['CI and tests', { '.github/workflows/ci.yml': 'name: CI\n', 'test/x.spec.ts': '\n' }],
     ['other unlisted files', { 'eslint.config.js': '\n', 'docs/x.md': 'docs\n' }],
+    [
+      'devDependencies',
+      { 'package.json': JSON.stringify({ version: '0.30.1', devDependencies: { vitest: '5.0.3' } }), 'pnpm-lock.yaml': 'x\n' },
+    ],
   ])('skips the version check when only %s change', (_, files) => {
     const r = checkOnly(files);
     expect(r.status, r.stderr).toBe(0);
@@ -419,7 +423,11 @@ describe('check-changelog-heading.mjs', () => {
 
   it.each([
     ['src/', { CODEOWNERS: '* @a @b\n', 'src/x.ts': 'export {};\n' }],
-    ['package.json', { 'package.json': JSON.stringify({ version: '0.30.1', dependencies: { x: '1.0.0' } }) }],
+    ['package.json dependencies', { 'package.json': JSON.stringify({ version: '0.30.1', dependencies: { x: '1.0.0' } }) }],
+    [
+      'dependencies alongside devDependencies',
+      { 'package.json': JSON.stringify({ version: '0.30.1', dependencies: { x: '1.0.0' }, devDependencies: { y: '1.0.0' } }) },
+    ],
     ['tsconfig.json', { 'tsconfig.json': '{}\n' }],
     ['NOTICE', { NOTICE: 'Copyright\n' }],
   ])('requires a bump when %s changes', (_, files) => {

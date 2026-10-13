@@ -12,7 +12,8 @@
 //   The target defaults to $TARGET_BRANCH, then `main`. Env CHANGELOG and PACKAGE_JSON override
 //   the file paths (for tests). Exits 1 with a GitHub `::error::` annotation on failure.
 //   BASE_SHA enables PR version/notes checks against that commit's package.json. They apply only
-//   to PRs that change the published package (RELEASE_PATHS).
+//   to PRs that change the published package (RELEASE_PATHS; in package.json, any field other than
+//   devDependencies).
 /* global process, console */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -22,6 +23,13 @@ import { compareSemver, parseSemver } from './release-plan.mjs';
 // the source compiled into dist/, the build config, package.json (dependencies, bin, engines) and
 // the license files in the tarball. Anything else (docs, CI, scripts, tests) needs none.
 const RELEASE_PATHS = [/^src\//, /^tsconfig\.json$/, /^package\.json$/, /^(LICENSE|NOTICE)$/];
+
+/** Whether package.json changed since `baseSha` in a field users install (not devDependencies). */
+function packageJsonChanged(baseSha, current) {
+  const base = JSON.parse(execFileSync('git', ['show', `${baseSha}:package.json`], { encoding: 'utf8' }));
+  const published = ({ devDependencies, ...rest }) => JSON.stringify(rest);
+  return published(base) !== published(current);
+}
 
 /** Files changed since `baseSha`: committed, staged, unstaged and untracked. */
 function changedFiles(baseSha) {
@@ -47,7 +55,8 @@ function checkHeading(heading, version, target) {
 
 const target = process.argv[2] || process.env.TARGET_BRANCH || 'main';
 const changelog = readFileSync(process.env.CHANGELOG || 'CHANGELOG.md', 'utf8');
-const { version } = JSON.parse(readFileSync(process.env.PACKAGE_JSON || 'package.json', 'utf8'));
+const pkg = JSON.parse(readFileSync(process.env.PACKAGE_JSON || 'package.json', 'utf8'));
+const { version } = pkg;
 const heading = changelog.split(/\r?\n/).find((line) => line.startsWith('## ')) ?? null;
 const error = checkHeading(heading, version, target);
 if (error) {
@@ -59,7 +68,9 @@ console.log(`CHANGELOG.md heading "${heading}" is valid for a PR into ${target}.
 // PR CI supplies the exact base commit. Push/release runs and local heading checks omit it.
 // Release-branch PRs accumulate changes under an unreleased heading without a version bump.
 if (process.env.BASE_SHA && !/^release\//.test(target)) {
-  const changed = changedFiles(process.env.BASE_SHA);
+  const changed = changedFiles(process.env.BASE_SHA).filter(
+    (file) => file !== 'package.json' || packageJsonChanged(process.env.BASE_SHA, pkg),
+  );
   if (!changed.some((file) => RELEASE_PATHS.some((re) => re.test(file)))) {
     console.log(`No version bump needed: no published files changed (${changed.join(', ') || 'none'}).`);
     process.exit(0);
