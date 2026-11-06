@@ -76,7 +76,7 @@ The `version` in `package.json` is exactly what gets published: CI never bumps i
 
 ## CI
 
-- `.github/workflows/ci.yml` runs on PRs into `main` and `release/**`, and `publish.yml` calls it (`workflow_call`) as its `verify` job: the CHANGELOG heading check (`scripts/check-changelog-heading.mjs`: the top heading must be exactly `## <package.json version>`; into `release/**`, `## <x.y.z> (unreleased)` is also accepted), install, build, tests and a CLI smoke test, on Node 22 and 24 (`test (22)`, `test (24)` are the required checks). PRs into `main` additionally require a version greater than the base commit (`BASE_SHA`) and nonempty release notes.
+- `.github/workflows/ci.yml` runs on PRs into `main` and `release/**`, and `publish.yml` calls it (`workflow_call`) as its `verify` job: the CHANGELOG heading check (`scripts/check-changelog-heading.mjs`: the top heading must be exactly `## <package.json version>`; into `release/**`, `## <x.y.z> (unreleased)` is also accepted), install, build, tests and a CLI smoke test, on Node 22 and 24 (`test (22)`, `test (24)` are the required checks). PRs into `main` additionally require a version greater than the base commit (`BASE_SHA`) and nonempty release notes, unless they change only files under `.github/`.
 - Every action is pinned by full commit SHA with a `# vX.Y.Z` comment, never a movable tag. To bump one, resolve the tag with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` (dereference an annotated tag with `gh api repos/<owner>/<repo>/git/tags/<sha>`), update SHA and comment together, and read the release notes. Dependabot proposes these updates.
 
 ## Publishing

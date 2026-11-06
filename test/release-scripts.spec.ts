@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -337,14 +337,24 @@ describe('release-state.sh (fake npm)', () => {
 });
 
 describe('check-changelog-heading.mjs', () => {
-  function check(changelog: string, version: string, target: string, baseVersion?: string) {
+  function check(
+    changelog: string,
+    version: string,
+    target: string,
+    baseVersion?: string,
+    changedFiles: string[] = [],
+  ) {
     const dir = tempDir();
     let baseSha = '';
     if (baseVersion !== undefined) {
       writeFileSync(join(dir, 'package.json'), JSON.stringify({ version: baseVersion }));
+      for (const file of changedFiles) {
+        mkdirSync(dirname(join(dir, file)), { recursive: true });
+        writeFileSync(join(dir, file), 'base\n');
+      }
       for (const args of [
         ['init', '--quiet'],
-        ['add', 'package.json'],
+        ['add', '.'],
         ['-c', 'user.name=Release test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'base'],
       ]) {
         const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
@@ -352,6 +362,7 @@ describe('check-changelog-heading.mjs', () => {
       }
       baseSha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).stdout.trim();
     }
+    for (const file of changedFiles) writeFileSync(join(dir, file), 'changed\n');
     writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ version }));
     return spawnSync('node', [join(scripts, 'check-changelog-heading.mjs'), target], {
@@ -380,6 +391,20 @@ describe('check-changelog-heading.mjs', () => {
   it('accepts a bumped PR version with release notes', () => {
     const r = check(log('## 0.30.2'), '0.30.2', 'main', '0.30.1');
     expect(r.status, r.stderr).toBe(0);
+  });
+
+  it('skips the version check for a PR that changes only .github/', () => {
+    const changed = ['.github/workflows/ci.yml', '.github/workflows/publish.yml'];
+    const r = check(log('## 0.30.1'), '0.30.1', 'main', '0.30.1', changed);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).not.toContain('greater than base version');
+  });
+
+  it('still requires a version bump when a PR changes .github/ and other files', () => {
+    const changed = ['.github/workflows/ci.yml', 'src/cli.ts'];
+    const r = check(log('## 0.30.1'), '0.30.1', 'main', '0.30.1', changed);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('must be greater than base version');
   });
 
   it('rejects a bumped PR version with an empty release section', () => {

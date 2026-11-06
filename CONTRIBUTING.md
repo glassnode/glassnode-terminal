@@ -58,8 +58,9 @@ The version in your PR is exactly the one that gets published: the release workf
 it. A PR merged without a bump publishes nothing. CI checks that the top `CHANGELOG.md` heading is
 exactly `## <package.json version>` (`node scripts/check-changelog-heading.mjs` runs it locally).
 For PRs into `main`, CI also compares the version with the exact PR base commit: it must be
-greater, and its changelog section must contain release notes. Locally, set `BASE_SHA` to a base
-commit to run the same comparison.
+greater, and its changelog section must contain release notes. A PR that changes only files under
+`.github/` (CI workflows, Dependabot config) is exempt: it needs no bump and publishes nothing.
+Locally, set `BASE_SHA` to a base commit to run the same comparison.
 
 **Release branches.** A large release can be prepared on a `release/**` branch. PRs into it carry
 no version bump but still add their `CHANGELOG.md` entry under a single
