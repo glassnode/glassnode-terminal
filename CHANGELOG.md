@@ -4,6 +4,13 @@ All notable changes to `glassnode-terminal` are documented here. The project fol
 [semver](https://semver.org/); see [CONTRIBUTING.md](./CONTRIBUTING.md) for how versions and this
 file are updated.
 
+## 0.2.5
+
+- Security: update `@x402/evm` and `@x402/fetch` to 2.30.0, which moves the bundled `zod` to 4.6.x
+  and fixes an out-of-memory denial of service when validating large arrays (GHSA-mrhx-c7xc-m3w5).
+- Development dependencies: update vitest to 5.0.5 and raise vite (8.1.6+) and source-map-js
+  (1.2.2+) for their security advisories. These are not installed with the package.
+
 ## 0.2.4
 
 - Add repository owners in `CODEOWNERS` so GitHub can request ownership reviews automatically.
