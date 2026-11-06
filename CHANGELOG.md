@@ -4,6 +4,11 @@ All notable changes to `glassnode-terminal` are documented here. The project fol
 [semver](https://semver.org/); see [CONTRIBUTING.md](./CONTRIBUTING.md) for how versions and this
 file are updated.
 
+## 0.2.5
+
+- CI: PRs that change only files under `.github/` (workflow and Dependabot updates) no longer
+  need a version bump; merged without one, they publish nothing.
+
 ## 0.2.4
 
 - Add repository owners in `CODEOWNERS` so GitHub can request ownership reviews automatically.
